@@ -1,0 +1,2 @@
+D:\Program\Auto\Lab1_regex\Debug\Lab1_regex.exe
+D:\Program\Auto\Lab1_regex\Debug\Lab1_regex.pdb
