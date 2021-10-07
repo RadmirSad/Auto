@@ -1,0 +1,66 @@
+
+
+#include <stdio.h>
+
+int main(int argc, char* argv[]){
+	yyin = fopen(argv[1], "r");
+	if(yyin != NULL) {
+		if(yylex());
+			for(int i = 0; i < yyleng; i++)
+				printf("%c", yytext[i]);
+				printf("\n");
+	}
+	fclose(yyin);
+	return 0;
+}
+
+bool flag = false;
+		while(!flag){
+			/*dop = ftp.YYText();
+			if(ftp.yylex())
+				par.push_back(ftp.YYText());
+			//if(dop == ftp.YYText())
+				//flag = true; */
+			ftp.yylex();
+			cout << ftp.YYText();
+			break;
+		}
+		for (int i = 0; i < par.size(); i++)
+			cout << par[i] << endl;
+
+ifstream MyFile;
+	MyFile.open("test.txt");
+	if(MyFile.is_open()) {
+		yyFlexLexer ftp(/*MyFile, cout*/);
+		vector<string> par;
+		string dop;
+		while(cin.good())
+			if(ftp.yylex())
+				cout << ftp.YYText() << endl;
+		MyFile.close();
+	}
+	else cout << "File was not opened((" << endl;
+
+
+	while(getline(MyFile, buf)) {
+			
+			dop.str(buf);
+			/*
+			dop >> buf;
+			cout << buf;
+			*/
+			yyFlexLexer ftp(dop, cout);
+			if(ftp.yylex()) {
+				buf = ftp.YYText();
+				cout<<" good "<<buf;
+				par.push_back(buf);
+			}
+			
+			cout << endl;
+		}
+		cout << "Parent classes: " << endl;
+		for(auto i : par)
+			cout << i << endl;
+
+			сlass{space}+{name_of_cl}{space}*:{space}*((public{space})|(private{space})|(protected{space}))?{space}*
+			{name_of_cl}/({space}*\{{space}*({name_of_func}{space}*)*\};)
