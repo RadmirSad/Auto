@@ -1,0 +1,52 @@
+%start CheckClassMap::FirstWord
+%class CheckClass
+%header   CheckClass.h
+
+%map CheckClassMap
+%%
+// State		Transition		End State		Action(s)
+FirstWord
+{
+				Class			SecondWord		{}
+				End				EOP				{SayBye();}
+				Other			ErrOfSymb		{}
+}
+
+SecondWord
+{
+				NameOfClass		ThirdWord		{}
+				Other			ErrOfSymb		{}
+}
+
+ThirdWord
+{
+				NameOfClass		Functions		{}
+				State			FourthWord		{}
+				Other			ErrOfSymb		{}
+}
+
+FourthWord
+{
+				NameOfClass		Functions		{}
+				Other			ErrOfSymb		{}
+}
+
+Functions
+{
+				Funcs			OK				{}
+				Other			ErrOfSymb		{}
+}
+
+OK
+{
+				Start			FirstWord		{}
+}
+
+ErrOfSymb
+{
+				Start			FirstWord		{}
+}
+
+EOP
+{}
+%%
