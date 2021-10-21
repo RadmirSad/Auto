@@ -313,8 +313,8 @@ int yyFlexLexer::yywrap() { return 1; }
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
-#define YY_NUM_RULES 9
-#define YY_END_OF_BUFFER 10
+#define YY_NUM_RULES 7
+#define YY_END_OF_BUFFER 8
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -324,15 +324,15 @@ struct yy_trans_info
 	};
 static const flex_int16_t yy_acclist[25] =
     {   0,
-       10,    3,    9,    2,    9,    3,    9,    5,    9,    6,
-        9,    5,    9,16388,    7,    9,    8,    9,16388, 8196,
+        5,    5,    8,    2,    7,    2,    7,    4,    7,    7,
+        4,    7,16387,    5,    7,    6,    7,16387,    5, 8195,
         1,    1,    1,    1
     } ;
 
 static const flex_int16_t yy_accept[60] =
     {   0,
-        1,    1,    1,    1,    1,    1,    1,    2,    4,    6,
-        8,   10,   12,   15,   17,   19,   19,   19,   20,   20,
+        1,    1,    1,    1,    1,    2,    3,    4,    6,    8,
+       10,   11,   14,   16,   18,   18,   18,   19,   19,   20,
        20,   20,   20,   20,   20,   20,   21,   21,   21,   21,
        21,   21,   21,   21,   21,   22,   23,   23,   23,   23,
        23,   23,   23,   23,   23,   23,   23,   23,   23,   23,
@@ -373,71 +373,71 @@ static const YY_CHAR yy_ec[256] =
 
 static const YY_CHAR yy_meta[26] =
     {   0,
-        1,    2,    1,    1,    1,    3,    4,    1,    2,    2,
+        1,    2,    3,    1,    1,    4,    5,    1,    2,    2,
         2,    2,    2,    2,    2,    2,    2,    2,    2,    2,
-        2,    2,    2,    5,    6
+        2,    2,    2,    6,    7
     } ;
 
-static const flex_int16_t yy_base[66] =
+static const flex_int16_t yy_base[67] =
     {   0,
-        0,    1,   13,   38,  112,  111,  113,  116,  116,   96,
-      116,  116,    0,  116,  116,  101,    3,    4,    5,   90,
-        6,    7,  101,   88,  102,  116,  104,   97,  102,    8,
-       27,   23,   45,   47,   33,   48,    4,   38,   92,   79,
-       80,   84,   89,   84,   82,   71,   79,   75,   51,   43,
-       59,   58,   45,   56,   44,   54,   34,  116,   66,   72,
-       78,   83,   87,   20,   92
+      109,  108,    0,   25,  116,  115,  117,  122,  100,  122,
+      122,   10,    0,  122,  105,   11,   12,   13,    0,   94,
+       14,   15,  105,   92,  106,  122,  108,  101,  106,   16,
+       35,   18,   44,   45,   42,   43,   34,    6,   96,   83,
+       84,   86,   89,   84,   81,   69,   74,   72,   45,   37,
+       55,   53,   40,   46,    9,    9,    8,  122,   61,   68,
+       75,   81,   87,   93,    7,   99
     } ;
 
-static const flex_int16_t yy_def[66] =
+static const flex_int16_t yy_def[67] =
     {   0,
        59,   59,   60,   60,   61,   61,   58,   58,   58,   58,
-       58,   58,   62,   58,   58,   58,   58,   62,   63,   58,
-       63,   63,   58,   58,   58,   58,   58,   58,   64,   63,
-       65,   63,   58,   65,   58,   58,   58,   58,   58,   58,
+       58,   62,   63,   58,   58,   58,   62,   64,   63,   58,
+       64,   64,   58,   58,   58,   58,   58,   58,   65,   64,
+       66,   64,   58,   66,   58,   58,   58,   58,   58,   58,
        58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
        58,   58,   58,   58,   58,   58,   58,    0,   58,   58,
-       58,   58,   58,   58,   58
+       58,   58,   58,   58,   58,   58
     } ;
 
-static const flex_int16_t yy_nxt[142] =
+static const flex_int16_t yy_nxt[148] =
     {   0,
-       58,   17,    9,    9,   17,   17,   21,   21,   58,   32,
-       25,   10,   10,   11,   11,   12,   11,   11,   11,   11,
-       11,   31,   38,   19,   32,   39,   19,   19,   33,   23,
-       58,   58,   23,   35,   36,   54,   11,   11,   11,   11,
-       12,   11,   11,   11,   11,   11,   33,   23,   33,   36,
-       37,   35,   40,   35,   41,   56,   57,   56,   55,   54,
-       54,   11,   11,   53,   52,   37,    8,    8,    8,    8,
-        8,    8,   13,   13,   13,   13,   13,   13,   14,   14,
-       14,   14,   14,   14,   18,   18,   51,   18,   22,   22,
-       50,   49,   22,   34,   34,   34,   48,   47,   46,   45,
+       10,   10,   11,   10,   10,   10,   10,   10,   31,   54,
+       56,   16,   16,   16,   21,   21,   58,   32,   25,   32,
+       40,   57,   41,   10,   10,   10,   10,   11,   10,   10,
+       10,   10,   10,   18,   18,   18,   33,   23,   58,   58,
+       23,   35,   23,   36,   36,   33,   33,   56,   10,   10,
+       35,   35,   38,   55,   54,   39,   54,   53,   52,   37,
+       37,    8,    8,    8,    8,    8,    8,    8,   12,   12,
+       12,   12,   12,   12,   12,   13,   13,   13,   13,   13,
+       13,   13,   17,   51,   17,   50,   17,   19,   19,   49,
+       19,   19,   19,   19,   22,   48,   22,   47,   46,   22,
 
-       44,   43,   42,   29,   30,   29,   28,   27,   26,   24,
-       20,   16,   58,   15,   15,    7,   58,   58,   58,   58,
+       34,   45,   34,   34,   44,   43,   42,   29,   30,   29,
+       28,   27,   26,   24,   20,   15,   58,   14,   14,    9,
+        9,    7,   58,   58,   58,   58,   58,   58,   58,   58,
        58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58
+       58,   58,   58,   58,   58,   58,   58
     } ;
 
-static const flex_int16_t yy_chk[142] =
+static const flex_int16_t yy_chk[148] =
     {   0,
-        0,   13,    1,    2,   17,   18,   19,   21,   22,   30,
-       22,    1,    2,    3,    3,    3,    3,    3,    3,    3,
-        3,   64,   37,   13,   32,   37,   17,   18,   31,   19,
-       21,   22,   30,   31,   35,   57,    3,    3,    4,    4,
-        4,    4,    4,    4,    4,    4,   33,   32,   34,   36,
-       35,   33,   38,   34,   38,   56,   55,   54,   53,   52,
-       51,    4,    4,   50,   49,   36,   59,   59,   59,   59,
-       59,   59,   60,   60,   60,   60,   60,   60,   61,   61,
-       61,   61,   61,   61,   62,   62,   48,   62,   63,   63,
-       47,   46,   63,   65,   65,   65,   45,   44,   43,   42,
+        3,    3,    3,    3,    3,    3,    3,    3,   65,   57,
+       56,   12,   16,   17,   18,   21,   22,   30,   22,   32,
+       38,   55,   38,    3,    3,    4,    4,    4,    4,    4,
+        4,    4,    4,   12,   16,   17,   31,   18,   21,   22,
+       30,   31,   32,   35,   36,   33,   34,   54,    4,    4,
+       33,   34,   37,   53,   52,   37,   51,   50,   49,   35,
+       36,   59,   59,   59,   59,   59,   59,   59,   60,   60,
+       60,   60,   60,   60,   60,   61,   61,   61,   61,   61,
+       61,   61,   62,   48,   62,   47,   62,   63,   63,   46,
+       63,   63,   63,   63,   64,   45,   64,   44,   43,   64,
 
-       41,   40,   39,   29,   28,   27,   25,   24,   23,   20,
-       16,   10,    7,    6,    5,   58,   58,   58,   58,   58,
+       66,   42,   66,   66,   41,   40,   39,   29,   28,   27,
+       25,   24,   23,   20,   15,    9,    7,    6,    5,    2,
+        1,   58,   58,   58,   58,   58,   58,   58,   58,   58,
        58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58,   58,   58,   58,   58,   58,   58,   58,   58,   58,
-       58
+       58,   58,   58,   58,   58,   58,   58
     } ;
 
 #define YY_TRAILING_MASK 0x2000
@@ -463,8 +463,9 @@ goto find_rule; \
 #include <fstream>
 #include <vector>
 #include <sstream>
-#line 467 "lex.yy.cc"
+#include <chrono>
 #line 468 "lex.yy.cc"
+#line 469 "lex.yy.cc"
 
 #define INITIAL 0
 #define PARENT 1
@@ -604,9 +605,9 @@ YY_DECL
 		}
 
 	{
-#line 15 "lab1_flex.l"
+#line 16 "lab1_flex.l"
 
-#line 610 "lex.yy.cc"
+#line 611 "lex.yy.cc"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -639,7 +640,7 @@ yy_match:
 			*(yy_state_ptr)++ = yy_current_state;
 			++yy_cp;
 			}
-		while ( yy_base[yy_current_state] != 116 );
+		while ( yy_base[yy_current_state] != 122 );
 
 yy_find_action:
 		yy_current_state = *--(yy_state_ptr);
@@ -689,61 +690,56 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 17 "lab1_flex.l"
+#line 18 "lab1_flex.l"
 BEGIN(PARENT);
 	YY_BREAK
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 18 "lab1_flex.l"
-{BEGIN(INITIAL);return 0;}
+#line 19 "lab1_flex.l"
+;
 	YY_BREAK
+case YY_STATE_EOF(INITIAL):
+#line 20 "lab1_flex.l"
+{return 0;}
+	YY_BREAK
+
+
 case 3:
 YY_RULE_SETUP
-#line 19 "lab1_flex.l"
-BEGIN(INITIAL);
+#line 23 "lab1_flex.l"
+{BEGIN(FUNC);}
 	YY_BREAK
-
-
 case 4:
 YY_RULE_SETUP
-#line 22 "lab1_flex.l"
-{BEGIN(FUNC); return 1;}
+#line 24 "lab1_flex.l"
+BEGIN(INITIAL);
 	YY_BREAK
+
+
 case 5:
 YY_RULE_SETUP
-#line 23 "lab1_flex.l"
-BEGIN(INITIAL);
+#line 27 "lab1_flex.l"
+;
 	YY_BREAK
 case 6:
 /* rule 6 can match eol */
 YY_RULE_SETUP
-#line 24 "lab1_flex.l"
-{BEGIN(INITIAL); return 0;}
-	YY_BREAK
-
-
-case 7:
-YY_RULE_SETUP
-#line 27 "lab1_flex.l"
-BEGIN(FUNC); 
-	YY_BREAK
-case 8:
-/* rule 8 can match eol */
-YY_RULE_SETUP
 #line 28 "lab1_flex.l"
 BEGIN(INITIAL);
 	YY_BREAK
+case YY_STATE_EOF(FUNC):
+#line 29 "lab1_flex.l"
+{return 0;}
+	YY_BREAK
 
-case 9:
+case 7:
 YY_RULE_SETUP
-#line 30 "lab1_flex.l"
+#line 31 "lab1_flex.l"
 ECHO;
 	YY_BREAK
-#line 744 "lex.yy.cc"
-			case YY_STATE_EOF(INITIAL):
+#line 742 "lex.yy.cc"
 			case YY_STATE_EOF(PARENT):
-			case YY_STATE_EOF(FUNC):
 				yyterminate();
 
 	case YY_END_OF_BUFFER:
@@ -1670,31 +1666,39 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 30 "lab1_flex.l"
+#line 31 "lab1_flex.l"
 
 using namespace std;
 
 int main() {
 	ifstream MyFile;
-	MyFile.open("test.txt");
-	if(MyFile.is_open()) {
-		bool flag = false;
-		stringstream ss;
-		vector<string> par;
-		string dop;
-		while(getline(MyFile, dop)) {
-			ss.str(dop);
-			yyFlexLexer ftp(ss, cout);
-			flag = ftp.yylex();
-			if(flag) {
-				dop = ftp.YYText();
-				cout<<" good "<< dop;
-				par.push_back(dop);
-			}
-		}
-		cout << "Parent classes: " << endl;
-			for(auto i : par)
-				cout << i << endl;
+	ofstream FileForInf;
+	for(int i = 1; i <= 10; i++) {
+		stringstream buf;
+		string str = "dop";
+		buf << i;
+		str += buf.str();
+		str += ".txt";
+		cout << str << endl;
+		MyFile.open(str);
+		if(MyFile.is_open()) {
+			stringstream rd, wr;
+			rd << MyFile.rdbuf();
+			str = "Info";
+			str += buf.str();
+			str += ".txt";
+			FileForInf.open(str);
+			yyFlexLexer ftp(rd, wr);
+			auto begin = chrono::high_resolution_clock::now();
+			ftp.yylex();
+			auto end = chrono::high_resolution_clock::now();
+			cout << "Strings from file were checked for " << chrono::duration_cast<chrono::milliseconds>(end - begin).count() << " milliseconds" << endl;
+			wr << chrono::duration_cast<chrono::milliseconds>(end - begin).count();
+			FileForInf << wr.rdbuf();
+			FileForInf.close();
+			MyFile.close();
+	}
+	else cout << "File didn't opened((" << endl;
 	}
 	return 0;
 }

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <vector>
 #include <sstream>
+#include <chrono>
 %}
 norm_symb [a-zA-Z_]
 digit [0-9]
@@ -14,43 +15,51 @@ name_of_func ({norm_symb}|{digit})+\(\);
 name_of_cl {norm_symb}({norm_symb}|{digit})*
 %%
 <INITIAL>{
-class{space}+{name_of_cl}{space}*:{space}*((public{space})|(protected{space})|(private{space}))?{space}* BEGIN(PARENT);
-\n {BEGIN(INITIAL);return 0;}
-. BEGIN(INITIAL);
+class{space}+{name_of_cl}{space}*\:{space}*((public{space})|(protected{space})|(private{space}))?{space}* BEGIN(PARENT);
+.|\n ;
+<<EOF>> {return 0;}
 }
 <PARENT>{
-{name_of_cl}/{space}*\{({space}*{name_of_func}{space}*)*\}; {BEGIN(FUNC); return 1;}
+({name_of_cl})/({space}*\{({space}*{name_of_func}{space}*)*\};) {BEGIN(FUNC);}
 . BEGIN(INITIAL);
-\n {BEGIN(INITIAL); return 0;}
 }
 <FUNC>{
-. BEGIN(FUNC); 
+.* ;
 \n BEGIN(INITIAL);
+<<EOF>> {return 0;}
 }
 %%
 using namespace std;
 
 int main() {
 	ifstream MyFile;
-	MyFile.open("test.txt");
-	if(MyFile.is_open()) {
-		bool flag = false;
-		stringstream ss;
-		vector<string> par;
-		string dop;
-		while(getline(MyFile, dop)) {
-			ss.str(dop);
-			yyFlexLexer ftp(ss, cout);
-			flag = ftp.yylex();
-			if(flag) {
-				dop = ftp.YYText();
-				cout<<" good "<< dop;
-				par.push_back(dop);
-			}
-		}
-		cout << "Parent classes: " << endl;
-			for(auto i : par)
-				cout << i << endl;
+	ofstream FileForInf;
+	for(int i = 1; i <= 10; i++) {
+		stringstream buf;
+		string str = "dop";
+		buf << i;
+		str += buf.str();
+		str += ".txt";
+		cout << str << endl;
+		MyFile.open(str);
+		if(MyFile.is_open()) {
+			stringstream rd, wr;
+			rd << MyFile.rdbuf();
+			str = "Info";
+			str += buf.str();
+			str += ".txt";
+			FileForInf.open(str);
+			yyFlexLexer ftp(rd, wr);
+			auto begin = chrono::high_resolution_clock::now();
+			ftp.yylex();
+			auto end = chrono::high_resolution_clock::now();
+			cout << "Strings from file were checked for " << chrono::duration_cast<chrono::milliseconds>(end - begin).count() << " milliseconds" << endl;
+			wr << chrono::duration_cast<chrono::milliseconds>(end - begin).count();
+			FileForInf << wr.rdbuf();
+			FileForInf.close();
+			MyFile.close();
+	}
+	else cout << "File didn't opened((" << endl;
 	}
 	return 0;
 }
