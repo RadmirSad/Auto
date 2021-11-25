@@ -25,21 +25,27 @@ int main() {
 			if (!end) classic.RetStart();
 		} while (!end);
 	else {
-		MyFile.open("D:/Program/Auto/test.txt");
+		MyFile.open("D:/Program/Auto/dop4.txt");
 		if (MyFile.is_open())
 		{
+			ofstream ForInfo;
 			long long dur = 0;
 			int count = 0;
 			while (getline(MyFile, text)) {
 				auto begin = chrono::high_resolution_clock::now();
 				end = classic.CheckString(text);
 				auto end_t = chrono::high_resolution_clock::now();
-				dur += chrono::duration_cast<chrono::microseconds>(begin - end_t).count();
+				dur += chrono::duration_cast<chrono::milliseconds>(end_t - begin).count();
 				count++;
 				if (!end) classic.RetStart();
 			}
 			MyFile.close();
-			cout << count << " strings were checked in " << dur << " microseconds" << endl;
+			cout << count << " strings were checked in " << dur << " milliseconds" << endl;
+			ForInfo.open("D:/Program/Auto/Info.txt");
+			if (ForInfo.is_open()) {
+				ForInfo << dur;
+				ForInfo.close();
+			}
 		}
 		else cout << "File didn't opened(((" << endl;
 	}
