@@ -1,5 +1,6 @@
 #ifndef _H_STATEMAP
 #define _H_STATEMAP
+#define _CRT_SECURE_NO_WARNINGS
 
 //
 // The contents of this file are subject to the Mozilla Public

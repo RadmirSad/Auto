@@ -7,6 +7,7 @@
 
 #ifndef CHECKCLASS_SM_H
 #define CHECKCLASS_SM_H
+#define _CRT_SECURE_NO_WARNINGS
 
 
 #define SMC_USES_IOSTREAMS
@@ -15,11 +16,14 @@
 
 // Forward declarations.
 class CheckClassMap;
-class CheckClassMap_FirstWord;
-class CheckClassMap_SecondWord;
-class CheckClassMap_ThirdWord;
-class CheckClassMap_FourthWord;
-class CheckClassMap_Functions;
+class CheckClassMap_StartState;
+class CheckClassMap_WordClass;
+class CheckClassMap_ClassName;
+class CheckClassMap_Colon;
+class CheckClassMap_Specificator;
+class CheckClassMap_ParentClass;
+class CheckClassMap_LeftBracket;
+class CheckClassMap_RightBracket;
 class CheckClassMap_OK;
 class CheckClassMap_ErrOfSymb;
 class CheckClassMap_EOP;
@@ -40,13 +44,14 @@ public:
     virtual void Entry(CheckClassContext&) {};
     virtual void Exit(CheckClassContext&) {};
 
-    virtual void Class(CheckClassContext& context);
-    virtual void End(CheckClassContext& context);
-    virtual void Funcs(CheckClassContext& context);
-    virtual void NameOfClass(CheckClassContext& context);
-    virtual void Other(CheckClassContext& context);
+    virtual void Class(CheckClassContext& context, const std::string& cls);
+    virtual void DesiredSymb(CheckClassContext& context, const std::string& name);
+    virtual void FindBr(CheckClassContext& context, const std::string& str);
+    virtual void FindCol(CheckClassContext& context, const std::string& str);
+    virtual void NameOfClass(CheckClassContext& context, const std::string& name);
+    virtual void NextState(CheckClassContext& context, const std::string& name);
+    virtual void NextWd(CheckClassContext& context, const std::string& spec);
     virtual void Start(CheckClassContext& context);
-    virtual void State(CheckClassContext& context);
 
 protected:
 
@@ -57,11 +62,14 @@ class CheckClassMap
 {
 public:
 
-    static CheckClassMap_FirstWord FirstWord;
-    static CheckClassMap_SecondWord SecondWord;
-    static CheckClassMap_ThirdWord ThirdWord;
-    static CheckClassMap_FourthWord FourthWord;
-    static CheckClassMap_Functions Functions;
+    static CheckClassMap_StartState StartState;
+    static CheckClassMap_WordClass WordClass;
+    static CheckClassMap_ClassName ClassName;
+    static CheckClassMap_Colon Colon;
+    static CheckClassMap_Specificator Specificator;
+    static CheckClassMap_ParentClass ParentClass;
+    static CheckClassMap_LeftBracket LeftBracket;
+    static CheckClassMap_RightBracket RightBracket;
     static CheckClassMap_OK OK;
     static CheckClassMap_ErrOfSymb ErrOfSymb;
     static CheckClassMap_EOP EOP;
@@ -78,66 +86,100 @@ public:
 
 };
 
-class CheckClassMap_FirstWord :
+class CheckClassMap_StartState :
     public CheckClassMap_Default
 {
 public:
-    CheckClassMap_FirstWord(const char * const name, const int stateId)
+    CheckClassMap_StartState(const char * const name, const int stateId)
     : CheckClassMap_Default(name, stateId)
     {};
 
-    virtual void Class(CheckClassContext& context);
-    virtual void End(CheckClassContext& context);
-    virtual void Other(CheckClassContext& context);
+    virtual void Class(CheckClassContext& context, const std::string& cls);
+    virtual void Default(CheckClassContext& context);
 };
 
-class CheckClassMap_SecondWord :
+class CheckClassMap_WordClass :
     public CheckClassMap_Default
 {
 public:
-    CheckClassMap_SecondWord(const char * const name, const int stateId)
+    CheckClassMap_WordClass(const char * const name, const int stateId)
     : CheckClassMap_Default(name, stateId)
     {};
 
-    virtual void NameOfClass(CheckClassContext& context);
-    virtual void Other(CheckClassContext& context);
+    virtual void Default(CheckClassContext& context);
+    virtual void NameOfClass(CheckClassContext& context, const std::string& name);
 };
 
-class CheckClassMap_ThirdWord :
+class CheckClassMap_ClassName :
     public CheckClassMap_Default
 {
 public:
-    CheckClassMap_ThirdWord(const char * const name, const int stateId)
+    CheckClassMap_ClassName(const char * const name, const int stateId)
     : CheckClassMap_Default(name, stateId)
     {};
 
-    virtual void NameOfClass(CheckClassContext& context);
-    virtual void Other(CheckClassContext& context);
-    virtual void State(CheckClassContext& context);
+    virtual void Default(CheckClassContext& context);
+    virtual void DesiredSymb(CheckClassContext& context, const std::string& name);
 };
 
-class CheckClassMap_FourthWord :
+class CheckClassMap_Colon :
     public CheckClassMap_Default
 {
 public:
-    CheckClassMap_FourthWord(const char * const name, const int stateId)
+    CheckClassMap_Colon(const char * const name, const int stateId)
     : CheckClassMap_Default(name, stateId)
     {};
 
-    virtual void NameOfClass(CheckClassContext& context);
-    virtual void Other(CheckClassContext& context);
+    virtual void Default(CheckClassContext& context);
+    virtual void NextWd(CheckClassContext& context, const std::string& spec);
 };
 
-class CheckClassMap_Functions :
+class CheckClassMap_Specificator :
     public CheckClassMap_Default
 {
 public:
-    CheckClassMap_Functions(const char * const name, const int stateId)
+    CheckClassMap_Specificator(const char * const name, const int stateId)
     : CheckClassMap_Default(name, stateId)
     {};
 
-    virtual void Funcs(CheckClassContext& context);
-    virtual void Other(CheckClassContext& context);
+    virtual void Default(CheckClassContext& context);
+    virtual void NextState(CheckClassContext& context, const std::string& name);
+};
+
+class CheckClassMap_ParentClass :
+    public CheckClassMap_Default
+{
+public:
+    CheckClassMap_ParentClass(const char * const name, const int stateId)
+    : CheckClassMap_Default(name, stateId)
+    {};
+
+    virtual void Default(CheckClassContext& context);
+    virtual void FindBr(CheckClassContext& context, const std::string& str);
+};
+
+class CheckClassMap_LeftBracket :
+    public CheckClassMap_Default
+{
+public:
+    CheckClassMap_LeftBracket(const char * const name, const int stateId)
+    : CheckClassMap_Default(name, stateId)
+    {};
+
+    virtual void Default(CheckClassContext& context);
+    virtual void FindBr(CheckClassContext& context, const std::string& str);
+};
+
+class CheckClassMap_RightBracket :
+    public CheckClassMap_Default
+{
+public:
+    CheckClassMap_RightBracket(const char * const name, const int stateId)
+    : CheckClassMap_Default(name, stateId)
+    {};
+
+    virtual void Default(CheckClassContext& context);
+    virtual void FindCol(CheckClassContext& context, const std::string& str);
 };
 
 class CheckClassMap_OK :
@@ -178,7 +220,7 @@ class CheckClassContext :
 public:
 
     explicit CheckClassContext(CheckClass& owner)
-    : FSMContext(CheckClassMap::FirstWord),
+    : FSMContext(CheckClassMap::StartState),
       _owner(owner)
     {};
 
@@ -208,39 +250,44 @@ public:
         return dynamic_cast<CheckClassState&>(*_state);
     };
 
-    inline void Class()
+    inline void Class(const std::string& cls)
     {
-        getState().Class(*this);
+        getState().Class(*this, cls);
     };
 
-    inline void End()
+    inline void DesiredSymb(const std::string& name)
     {
-        getState().End(*this);
+        getState().DesiredSymb(*this, name);
     };
 
-    inline void Funcs()
+    inline void FindBr(const std::string& str)
     {
-        getState().Funcs(*this);
+        getState().FindBr(*this, str);
     };
 
-    inline void NameOfClass()
+    inline void FindCol(const std::string& str)
     {
-        getState().NameOfClass(*this);
+        getState().FindCol(*this, str);
     };
 
-    inline void Other()
+    inline void NameOfClass(const std::string& name)
     {
-        getState().Other(*this);
+        getState().NameOfClass(*this, name);
+    };
+
+    inline void NextState(const std::string& name)
+    {
+        getState().NextState(*this, name);
+    };
+
+    inline void NextWd(const std::string& spec)
+    {
+        getState().NextWd(*this, spec);
     };
 
     inline void Start()
     {
         getState().Start(*this);
-    };
-
-    inline void State()
-    {
-        getState().State(*this);
     };
 
 private:

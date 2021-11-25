@@ -1,50 +1,148 @@
-%start CheckClassMap::FirstWord
+%start CheckClassMap::StartState
 %class CheckClass
-%header   CheckClass.h
+%include <iostream>
+%include <string>
+%include <map>
+%header  CheckClass.h
 
 %map CheckClassMap
 %%
-// State		Transition		End State		Action(s)
-FirstWord
+// State	Transition		End State		Action(s)
+StartState
 {
-				Class			SecondWord		{}
-				End				EOP				{SayBye();}
-				Other			ErrOfSymb		{}
+			Class(cls : const std::string&)[(cls.substr(0, 5) == "class") && ((cls[5] == ' ') || (cls[5] == '\t'))]
+							WordClass
+								{put_fir(5); put_sec(6); word_stage();}
+								
+			Class(cls : const std::string&)[cls == "end"]
+							EOP
+								{say_bye();}
+													
+			Default			ErrOfSymb		{err_msg(0);}
 }
 
-SecondWord
+WordClass
 {
-				NameOfClass		ThirdWord		{}
-				Other			ErrOfSymb		{}
+			NameOfClass(name : const std::string&)[!(ctxt.symb_was()) && (ctxt.get_fir() < name.length()) && ((name[ctxt.get_fir()] == ' ') || (name[ctxt.get_fir()] == '\t'))]
+							nil				
+								{up_fir(); up_sec(); word_stage();}
+																
+			NameOfClass(name : const std::string&)[(ctxt.get_sec() < name.length()) && name[ctxt.get_sec()] != '\t' && name[ctxt.get_sec()] != ' ' && name[ctxt.get_sec()] != ':']
+							nil				
+								{cg_symb(true); up_sec(); word_stage();}
+																
+			NameOfClass(name : const std::string&)[!ctxt.is_end_of_class()]
+							nil				
+								{cg_end_of_class(true); word_stage();}
+																
+			NameOfClass(name : const std::string&)[ctxt.is_end_of_class() && (ctxt.is_name_of_class(name.substr(ctxt.get_fir(), ctxt.get_sec() - ctxt.get_fir())) == 1)]
+							ClassName		
+								{cg_symb(false); add_my_cl(name.substr(ctxt.get_fir(), ctxt.get_sec() - ctxt.get_fir())); put_fir(ctxt.get_sec()); class_stage();}
+				
+			Default			ErrOfSymb		{err_msg(1); ch_err();}
 }
 
-ThirdWord
+ClassName
 {
-				NameOfClass		Functions		{}
-				State			FourthWord		{}
-				Other			ErrOfSymb		{}
+			DesiredSymb(name : const std::string&)[(ctxt.get_fir() < name.length()) && (name[ctxt.get_fir()] == ' ' || name[ctxt.get_fir()] == '\t')]
+							nil				
+								{up_fir(); up_sec(); class_stage();}
+												
+			DesiredSymb(name : const std::string&)[(ctxt.get_fir() < name.length()) && name[ctxt.get_fir()] == ':']
+							Colon			
+								{up_fir(); up_sec(); col_stage();}
+													
+			Default			ErrOfSymb		{err_msg(2); ch_err();}
 }
 
-FourthWord
+Colon
 {
-				NameOfClass		Functions		{}
-				Other			ErrOfSymb		{}
+			NextWd(spec : const std::string&)[!ctxt.symb_was() && (ctxt.get_fir() < spec.length()) && ((spec[ctxt.get_fir()] == ' ') || (spec[ctxt.get_fir()] == '\t'))]
+							nil				
+								{up_fir(); up_sec(); col_stage();}
+				
+			NextWd(spec : const std::string&)[(ctxt.get_sec() < spec.length()) && spec[ctxt.get_sec()] != '\t' && spec[ctxt.get_sec()] != ' ' && spec[ctxt.get_sec()] != '{']
+							nil				
+								{cg_symb(true); up_sec(); col_stage();}
+			NextWd(spec : const std::string&)[ctxt.is_specif(spec.substr(ctxt.get_fir(), ctxt.get_sec() - ctxt.get_fir()))]
+							Specificator	
+								{cg_symb(false); add_par_cl(spec.substr(ctxt.get_fir(), ctxt.get_sec() - ctxt.get_fir())); spec_stage(); put_fir(ctxt.get_sec());}
+													
+			NextWd(spec : const std::string&)[ctxt.is_name_of_class(spec.substr(ctxt.get_fir(), ctxt.get_sec() - ctxt.get_fir())) == 1]
+							ParentClass		
+								{cg_symb(false); par_stage(); add_par_cl(spec.substr(ctxt.get_fir(), ctxt.get_sec() - ctxt.get_fir())); put_fir(ctxt.get_sec());}
+													
+			Default			ErrOfSymb		{err_msg(3); ch_err();}
 }
 
-Functions
+Specificator
 {
-				Funcs			OK				{}
-				Other			ErrOfSymb		{}
+			NextState(name : const std::string&)[!(ctxt.symb_was()) && (ctxt.get_fir() < name.length()) && ((name[ctxt.get_fir()] == ' ') || (name[ctxt.get_fir()] == '\t'))]
+							nil				
+								{up_fir(); up_sec(); spec_stage();}
+																	
+			NextState(name : const std::string&)[(ctxt.get_sec() < name.length()) && name[ctxt.get_sec()] != '\t' && name[ctxt.get_sec()] != ' ' && name[ctxt.get_sec()] != '{']
+							nil				
+								{cg_symb(true); up_sec(); spec_stage();}
+																
+			NextState(name : const std::string&)[ctxt.is_name_of_class(name.substr(ctxt.get_fir(), ctxt.get_sec() - ctxt.get_fir()))]
+							ParentClass		
+								{add_par_cl(name.substr(ctxt.get_fir(), ctxt.get_sec() - ctxt.get_fir())); cg_symb(false); put_fir(ctxt.get_sec()); par_stage();}
+								
+			Default			ErrOfSymb		{err_msg(4); ch_err();}
+}
+
+ParentClass
+{
+			FindBr(str : const std::string&)[(ctxt.get_fir() < str.length()) && (str[ctxt.get_fir()] == '\t' || str[ctxt.get_fir()] == ' ')]
+							nil
+								{up_fir(); up_sec(); par_stage();}
+								
+			FindBr(str : const std::string&)[str[ctxt.get_fir()] == '{']
+							LeftBracket	
+								{up_fir(); up_sec(); lbr_stage();}
+
+			Default			ErrOfSymb		{err_msg(5); ch_err();}
+}
+
+LeftBracket
+{
+			FindBr(str : const std::string&)[!(ctxt.symb_was()) && (ctxt.get_fir() < str.length()) && (str[ctxt.get_fir()] == '}')]
+							RightBracket	
+								{rbr_stage();} // here
+								
+			FindBr(str : const std::string&)[!(ctxt.symb_was()) && (ctxt.get_fir() < str.length()) && (str[ctxt.get_fir()] == '\t' || str[ctxt.get_fir()] == ' ')]
+							nil
+								{up_fir(); up_sec(); lbr_stage();}
+			
+			FindBr(str : const std::string&)[(ctxt.get_sec() < str.length()) && (str[ctxt.get_sec()] != ';')]
+							nil
+								{cg_symb(true); up_sec(); lbr_stage();}
+			
+			FindBr(str : const std::string&)[ctxt.is_func(str.substr(ctxt.get_fir(), ctxt.get_sec() - ctxt.get_fir()))]
+							nil
+								{cg_symb(false); up_sec(); put_fir(ctxt.get_sec());}
+			
+			Default			ErrOfSymb		{err_msg(6); ch_err();}
+}
+
+RightBracket
+{
+			FindCol(str : const std::string&)[str[ctxt.get_fir() + 1] == ';']
+							OK
+								{cr_new_cls();}
+								
+			Default			ErrOfSymb		{err_msg(7); ch_err();}
 }
 
 OK
 {
-				Start			FirstWord		{}
+				Start			StartState		{err_msg(8);}
 }
 
 ErrOfSymb
 {
-				Start			FirstWord		{}
+				Start			StartState		{}
 }
 
 EOP
