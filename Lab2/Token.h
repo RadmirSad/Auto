@@ -22,8 +22,8 @@ class Token;
 class TNode;
 class TTree;
 
-void create_n_save(TNode*&, Token*);
-void create_links(TNode*, TNode*);
+void create_n_save(TNode*& dop_node, Token* ptr);
+void create_links(TNode* par, TNode* leaf);
 
 
 class Token {
@@ -42,29 +42,34 @@ public:
 
 	const type get_type() const { return my_type; }
 	const std::string& get_str() const { return info; }
-	TNode* get_subtr() { return subtr; }
+	TNode* get_subtr() const { return subtr; }
 
 	void change_str(const std::string& str) { info = str; }
 	void change_type(type new_type) { my_type = new_type; }
+
+	friend bool operator == (const Token& fir, const Token& sec) {
+		return (fir.my_type == sec.my_type) && (fir.info == sec.info) && (fir.subtr == sec.subtr);
+	}
 };
 
 
 class TNode {
 protected:
 	std::vector<TNode*> leafs;
-	TNode* par = nullptr;
 	Token* tok = nullptr;
 
 public:
 	TNode() {};
-	~TNode() { par = nullptr; leafs.clear(); };
-	void change_par(TNode* new_par) { par = new_par; }
+	~TNode() { leafs.clear(); };
 	void save_token(Token* new_tok) { tok = new_tok; }
-	Token* get_saved_token() { return tok; }
+	Token* get_saved_token() const { return tok; }
 	void add_leaf(TNode* new_leaf) { leafs.push_back(new_leaf); }
-	TNode* get_fir_leaf();
 
-	TNode* get_sec_leaf();
+	void change_leaf(int ind, TNode* new_leaf);
+
+	TNode* get_fir_leaf() const;
+
+	TNode* get_sec_leaf() const;
 
 	void DestroyNodes();
 
@@ -88,5 +93,5 @@ public:
 
 	void change_node(TNode* new_ptr) { root = new_ptr; }
 
-	TNode* get_node() { return root; }
+	TNode* get_node() const { return root; }
 };
