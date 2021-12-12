@@ -87,6 +87,7 @@ void Regul::compile(const std::string& dop)
 		del_Auto(_st);
 		_st = nullptr;
 		_end_states.clear();
+		_alphabet.clear();
 	}
 	expr = dop;
 	setup();
@@ -109,13 +110,12 @@ void Regul::setup() {
 	end->change_receive(true);
 	del_tree_with_tokens(this_tree);
 	root.change_node(nullptr);
-	std::vector<std::string> alphabet;
-	get_graph(start, str, alphabet, 1);
-	build_DFA(start, alphabet);
-	get_graph(start, str, alphabet, 2);
-	min_DFA(start, alphabet);
+	get_graph(start, str, 1);
+	build_DFA(start);
+	get_graph(start, str, 2);
+	min_DFA(start);
 	_st = start;
-	get_graph(start, str, alphabet, 3);
+	get_graph(start, str, 3);
 }
 
 void Regul::tokenize() {
@@ -610,7 +610,7 @@ void Regul::del_tree_with_tokens(TNode*& root) {
 	delete root;
 }
 
-void Regul::bypass_graph(Automata* start, std::vector<int>& IDs, std::string& descript, std::vector<std::string>& alphabet) {
+void Regul::bypass_graph(Automata* start, std::vector<int>& IDs, std::string& descript) {
 	int my_id = start->get_id();
 	bool is_marked = false;
 	for (auto it : IDs)
@@ -628,29 +628,29 @@ void Regul::bypass_graph(Automata* start, std::vector<int>& IDs, std::string& de
 			Automata* next = pr.first;
 			if (!(pr.second.empty())) {
 				bool is_added = false;
-				for (auto it : alphabet)
+				for (auto it : _alphabet)
 					if (it == pr.second) {
 						is_added = true;
 						break;
 					}
 				if (!is_added)
-					alphabet.push_back(pr.second);
+					_alphabet.push_back(pr.second);
 			}
 			descript += std::to_string(my_id) + "->" + std::to_string(next->get_id());
 			if (!(pr.second.empty())) {
 				descript += " [label = \"" + pr.second + "\"]";
 			}
 			descript += ";";
-			bypass_graph(next, IDs, descript, alphabet);
+			bypass_graph(next, IDs, descript);
 		}
 	}
 }
 
-void Regul::get_graph(Automata* start, std::string& for_tests, std::vector<std::string>& alphabet, int ind) {
+void Regul::get_graph(Automata* start, std::string& for_tests, int ind) {
 	std::string str = "digraph ast { rankdir=LR;";
 	std::vector<int> IDs;
 	str += std::to_string(start->get_id()) + " [shape = square];";
-	bypass_graph(start, IDs, str, alphabet);
+	bypass_graph(start, IDs, str);
 	str += "}";
 	if (str.size() < 5000) {
 		Agraph_t* Graph = agmemread(str.c_str());
@@ -718,7 +718,8 @@ void Regul::move(std::vector<Automata*>& set, const std::string& letter) {
 	set = new_set;
 }
 
-bool Regul::equal_sets(const std::vector<Automata*>& first, const std::vector<Automata*>& second)
+template <typename T>
+bool Regul::equal_sets(const std::vector<T>& first, const std::vector<T>& second)
 {
 	int sz_fir = first.size(), sz_sec = second.size();
 	if (sz_fir == sz_sec) {
@@ -759,7 +760,7 @@ void Regul::del_Auto(Automata*& start) {
 	delete start;
 }
 
-void Regul::build_DFA(Automata*& start, const std::vector<std::string>& alphabet) {
+void Regul::build_DFA(Automata*& start) {
 	int id = 1;
 	Automata* new_start = nullptr, * new_end = nullptr, *prev_state = nullptr;
 	std::vector<Automata*> addit_set{ start };
@@ -773,7 +774,7 @@ void Regul::build_DFA(Automata*& start, const std::vector<std::string>& alphabet
 	for (int ind_new_states = 0; ind_new_states < marked_states.size(); ind_new_states++) {
 		auto newst_N_related_st = marked_states[ind_new_states];
 		prev_state = newst_N_related_st.first;
-		for (auto letter : alphabet) {
+		for (auto letter : _alphabet) {
 			if (letter.size() > 1)
 				throw std::length_error("Unexpected length of letter");
 			addit_set = newst_N_related_st.second;
@@ -803,20 +804,22 @@ void Regul::build_DFA(Automata*& start, const std::vector<std::string>& alphabet
 	start = new_start;
 }
 
-void Regul::make_start_groups(Automata* start, std::vector<std::set<Automata*>>& groups) {
+void Regul::make_start_groups(Automata* start, std::vector<std::vector<Automata*>>& groups) {
 	int ind_for_search = 0;
 	if (start->get_receive())
 		ind_for_search = 1;
-	auto search = groups[ind_for_search].find(start);
-	if (search == groups[ind_for_search].end())
-		groups[ind_for_search].insert(start);
-	else return;
+	int sz = groups[ind_for_search].size();
+	bool is_find = false;
+	for (int i = 0; i < sz; i++)
+		if (start == groups[ind_for_search][i])
+			return;
+	groups[ind_for_search].push_back(start);
 	int links = start->get_size_trans();
 	for (int i = 0; i < links; i++)
 		make_start_groups(start->get_transition(i).first, groups);
 }
 
-void Regul::get_next_states(const std::set<Automata*>& group, std::vector<Automata*>& ns, const std::string& letter) {
+void Regul::get_next_states(const std::vector<Automata*>& group, std::vector<Automata*>& ns, const std::string& letter) {
 	for (auto state : group) {
 		auto next = state->get_next_state(letter);
 		ns.push_back(next);
@@ -830,24 +833,24 @@ bool Regul::is_new(int ind, const std::vector<int>& IDs) {
 	return true;
 }
 
-void Regul::get_ids(const std::vector<Automata*>& NS, const std::vector<std::set<Automata*>>& split,
+void Regul::get_ids(const std::vector<Automata*>& NS, const std::vector<std::vector<Automata*>>& split,
 	std::vector<int>& IDs, std::map<int, int>& unique_ids) {
 	int sz_split = split.size(), id = 0;
 	for (auto ptr : NS)
 		for (int ind_of_group = 0; ind_of_group < sz_split; ind_of_group++) {
-			auto search = split[ind_of_group].find(ptr);
-			if (search != split[ind_of_group].end())
-			{
-				if (is_new(ind_of_group, IDs))
-					unique_ids.insert({ ind_of_group, id++});
-				IDs.push_back(ind_of_group);
-				break;
-			}
+			int sz_group = split[ind_of_group].size();
+			for(int i = 0; i < sz_group; i++)
+				if (ptr == split[ind_of_group][i]) {
+					if (is_new(ind_of_group, IDs))
+						unique_ids.insert({ ind_of_group, id++ });
+					IDs.push_back(ind_of_group);
+					break;
+				}
 		}
 }
 
-void Regul::build_new_groups(std::vector<std::set<Automata*>>& split, const std::vector<std::string>& alphabet) {
-	std::vector<std::set<Automata*>> new_split;
+void Regul::build_new_groups(std::vector<std::vector<Automata*>>& split) {
+	std::vector<std::vector<Automata*>> new_split;
 	int size = split.size(), ind = 0;
 	for (; ind < size; ind++) {
 		auto group = split[ind];
@@ -857,7 +860,7 @@ void Regul::build_new_groups(std::vector<std::set<Automata*>>& split, const std:
 			continue;
 		}
 		bool is_diff = false;
-		for (auto letter : alphabet) {
+		for (auto letter : _alphabet) {
 			std::vector<Automata*> next_states;
 			get_next_states(group, next_states, letter);
 			std::vector<int> IDs;
@@ -868,14 +871,14 @@ void Regul::build_new_groups(std::vector<std::set<Automata*>>& split, const std:
 			if (unique_ids.size() == 1)
 				continue;
 			is_diff = true;
-			std::set<Automata*> adder;
+			std::vector<Automata*> adder;
 			int prev_size = new_split.size(), index_of_state = 0;
 			new_split.insert(new_split.cend(), unique_ids.size(), adder);
 			for (auto it: group) {
 				int new_id = IDs[index_of_state];
 				auto search = unique_ids.find(new_id);
 				new_id = search->second;
-				new_split[new_id + prev_size].insert(it);
+				new_split[new_id + prev_size].push_back(it);
 				index_of_state++;
 			}
 			ind++;
@@ -891,26 +894,27 @@ void Regul::build_new_groups(std::vector<std::set<Automata*>>& split, const std:
 	split = new_split;
 }
 
-int Regul::get_ind_start(Automata* start, const std::vector<std::set<Automata*>>& split) {
-	int sz = split.size();
+int Regul::get_ind_start(Automata* start, const std::vector<std::vector<Automata*>>& split) {
+	int sz = split.size(), sz_group = 0;
 	for (int ind = 0; ind < sz; ind++) {
 		auto group = split[ind];
-		auto search = group.find(start);
-		if (search != group.end())
-			return ind;
+		sz_group = group.size();
+		for (int i = 0; i < sz_group; i++)
+			if (group[i] == start)
+				return ind;
 	}
 	throw std::out_of_range("Start state didn't found");
 }
 
-void Regul::min_DFA(Automata*& start, const std::vector<std::string>& alphabet) {
-	std::vector<std::set<Automata*>> split;
-	std::set<Automata*> adder;
+void Regul::min_DFA(Automata*& start) {
+	std::vector<std::vector<Automata*>> split;
+	std::vector<Automata*> adder;
 	split.push_back(adder); split.push_back(adder);
 	make_start_groups(start, split);
 	int new_size = 0, prev_size = 0;
 	do {
 		prev_size = split.size();
-		build_new_groups(split, alphabet);
+		build_new_groups(split);
 		new_size = split.size();
 	} while (new_size != prev_size);
 	std::vector<Automata*> new_states;
@@ -928,16 +932,21 @@ void Regul::min_DFA(Automata*& start, const std::vector<std::string>& alphabet) 
 			new_states[ind]->change_receive(true);
 			_end_states.push_back(new_states[ind]);
 		}
-		for (auto letter : alphabet) {
+		for (auto letter : _alphabet) {
 			auto next = (*elem)->get_next_state(letter);
+			bool is_find = false;
 			for (int i = 0; i < new_size; i++) {
-				auto search = split[i].find(next);
-				if (search != split[i].end()) {
-					new_states[ind]->add_transit(new_states[i], letter);
-					new_states[i]->add_prev(new_states[ind], letter);
-					break;
-				}
+				int sz_group = split[i].size();
+				for(int j = 0; j < sz_group; j++)
+					if (split[i][j] == next) {
+						is_find = true;
+						new_states[ind]->add_transit(new_states[i], letter);
+						new_states[i]->add_prev(new_states[ind], letter);
+						break;
+					}
 			}
+			if (!is_find)
+				throw std::invalid_argument("Unexpected situation. Pointer wasn't in any of groups.");
 		}
 	}
 	del_Auto(start);
@@ -990,17 +999,22 @@ void Regul::combine_condits(Automata* start, Automata* end) {
 	}
 	if (find == sz_trans)
 		return;
-	if (start->get_transition(find).second.size() == 1)
-		if (is_meta(start->get_transition(find).second))
-			start->get_transition(find).second = "%" + start->get_transition(find).second + "%";
+	std::string find_str = start->get_transition(find).second;
+	if (find_str.size() == 1)
+		if (is_meta(find_str))
+			start->get_transition(find).second = "%" + find_str + "%";
 	for (int i = sz_trans - 1; i != find; i--) {
 		auto next = start->get_transition(i);
 		if (next.first == end) {
+			std::string dop = next.second;
 			if (next.second.size() == 1)
 				if (is_meta(next.second))
 					next.second = "%" + next.second + "%";
-			start->change_condit_trans(start->get_transition(find).second + "|" + next.second, end);
-			start->delete_transit(end, next.second);
+			std::string add = start->get_transition(find).second + "|" + next.second;
+			start->change_condit_trans(add, end);
+			end->change_condit_prev(add, start);
+			start->delete_transit(end, dop);
+			end->delete_prev(start, dop);
 		}
 	}
 }
@@ -1010,42 +1024,127 @@ std::string Regul::restore_regexpr() {
 		std::cout << "To restore a regular expression there must be an automaton" << std::endl;
 		return std::string("");
 	}
-	Automata* start = _st;
 	if (_end_states.empty()) {
 		std::cout << "There are no receptive states" << std::endl;
 		return std::string("");
 	}
-	Automata* end = nullptr;
+	exclude_other_states(_st, _end_states);
+	combine_condits(_st, _st);
+	int sz = _end_states.size();
 	std::string restored_reg, adder;
-	for (int i = 0; i < _end_states.size(); i++)
-		if (_end_states[i] != start) {
-			end = _end_states[i];
-			_end_states.erase(_end_states.cbegin() + i + 1, _end_states.cend());
-			_end_states.erase(_end_states.cbegin(), _end_states.cend() - 1);
-			break;
+	for (int ind_of_end = 0; ind_of_end < sz; ind_of_end++)
+		if(_st != _end_states[ind_of_end]) {
+			combine_condits(_st, _end_states[ind_of_end]);
+			combine_condits(_end_states[ind_of_end], _st);
+			combine_condits(_end_states[ind_of_end], _end_states[ind_of_end]);
 		}
-	exclude_other_states(start, end);
-	combine_condits(start, end);
-	combine_condits(start, start);
-	combine_condits(end, start);
-	combine_condits(end, end);
-	restored_reg += "(";
-	restored_reg += get_loops(start);
-	int search = restored_reg.find("...", 0);
-	if (search != -1)
-		restored_reg.erase(search, 3);
-	restored_reg += "|";
-	adder = get_one_trans(start, end);
-	adder += get_loops(end);
-	restored_reg += adder + get_one_trans(end, start);
-	restored_reg += ")..." + adder;
-	if (start->get_receive()) {
-		exclude_other_states(start, start);
-		restored_reg += "|" + get_loops(start);
+	for (int ind_of_end = 0; ind_of_end < sz; ind_of_end++) {
+		Automata* new_start = nullptr;
+		std::vector<Automata*> new_end;
+		get_little_copy(_st, _end_states, new_start, new_end);
+		for (int del = 0; del < sz; del++)
+			if (del != ind_of_end)
+				new_end[del]->change_receive(false);
+		new_end.erase(new_end.cbegin() + ind_of_end + 1, new_end.cend());
+		if(ind_of_end)
+			new_end.erase(new_end.cbegin(), new_end.cbegin() + ind_of_end);
+		exclude_other_states(new_start, new_end);
+		if (new_start == new_end[0])
+		{
+			adder = get_loops(new_start);
+			delete new_start;
+		}
+		else {
+			adder = "(";
+			std::string dop;
+			adder += get_loops(new_start);
+			dop = get_one_trans(new_end[0], new_start);
+			if (dop.empty()) {
+				adder = adder.substr(1, adder.size() - 1);
+				adder += "(" + get_one_trans(new_start, new_end[0]) + ")";
+				adder += get_loops(new_end[0]);
+			}
+			else {
+				int search = adder.find("...", 0);
+				if (search != -1)
+					adder.erase(search, 3);
+				if (adder.size() != 1)
+					adder += "|";
+				adder += "(" + get_one_trans(new_start, new_end[0]) + ")";
+				adder += get_loops(new_end[0]);
+				adder += "(" + dop + ")" + ")...";
+				adder += "(" + get_one_trans(new_start, new_end[0]) + ")";
+				adder += get_loops(new_end[0]);
+			}
+			if (new_start->get_receive())
+				delete new_start;
+			for (auto it : new_end)
+				delete it;
+		}
+		if (restored_reg.empty())
+			restored_reg = adder;
+		else restored_reg += "|" + adder;
 	}
-	delete start;
+	del_Auto(_st);
 	_st = nullptr;
 	_end_states.clear();
+	return restored_reg;
+}
+
+void Regul::get_little_copy(Automata* start, std::vector<Automata*> end, Automata*& new_start, std::vector<Automata*>& new_end)
+{
+	int sz_end = end.size(), id = 1;
+	for (int i = 0; i < sz_end; i++) {
+		Automata* add = new Automata(id++);
+		add->change_receive(true);
+		new_end.push_back(add);
+		if (end[i] == start)
+			new_start = add;
+	}
+	if (!new_start)
+		new_start = new Automata(id++);
+	for (int ind_of_end = 0; ind_of_end < sz_end; ind_of_end++) {
+		int sz_trans = end[ind_of_end]->get_size_trans();
+		for (int ind_trans = 0; ind_trans < sz_trans; ind_trans++) {
+			auto trans = end[ind_of_end]->get_transition(ind_trans);
+			bool is_transited = false;
+			for(int sec_ind = 0; sec_ind < sz_end; sec_ind++)
+				if (trans.first == end[sec_ind]) {
+					is_transited = true;
+					new_end[ind_of_end]->add_transit(new_end[sec_ind], trans.second);
+					new_end[sec_ind]->add_prev(new_end[ind_of_end], trans.second);
+					break;
+				}
+			if (!is_transited) {
+				if (trans.first == start) {
+					new_end[ind_of_end]->add_transit(new_start, trans.second);
+					new_start->add_prev(new_end[ind_of_end], trans.second);
+				}
+				else throw std::invalid_argument("Unexpected situation.");
+			}
+		}
+	}
+	if (!(start->get_receive())) {
+		int sz_trans = start->get_size_trans();
+		for (int ind_trans = 0; ind_trans < sz_trans; ind_trans++) {
+			auto trans = start->get_transition(ind_trans);
+			bool is_transited = false;
+			for (int sec_ind = 0; sec_ind < sz_end; sec_ind++)
+				if (trans.first == end[sec_ind]) {
+					is_transited = true;
+					new_start->add_transit(new_end[sec_ind], trans.second);
+					new_end[sec_ind]->add_prev(new_start, trans.second);
+					break;
+				}
+			if (!is_transited) {
+				if (trans.first == start) {
+					new_start->add_transit(new_start, trans.second);
+					new_start->add_prev(new_start, trans.second);
+				}
+				else throw std::invalid_argument("Unexpected situation.");
+			}
+		}
+	}
 }
 
 bool Regul::is_meta(const std::string& letter) {
@@ -1059,31 +1158,32 @@ bool Regul::is_meta(const std::string& letter) {
 	}
 }
 
-void Regul::exclude_other_states(Automata* start, Automata* end) {
+void Regul::exclude_other_states(Automata* start, std::vector<Automata*> end) {
 	while (true) {
 		Automata* del_state = find_redundant_state(start, end);
 		if (!del_state)
 			break;
+		combine_condits(del_state, del_state);
 		int sz_prev = del_state->get_size_prev(), sz_next = del_state->get_size_trans();
 		for (int ind_prev = sz_prev - 1; ind_prev >= 0; ind_prev--) {
 			auto prev_trans = del_state->get_prev(ind_prev);
+			if (prev_trans.first == del_state)
+				continue;
 			std::string new_condit = prev_trans.second;
 			if (new_condit.size() == 1)
 				if (is_meta(new_condit))
 					new_condit = "%" + new_condit + "%";
-			combine_condits(del_state, del_state);
 			new_condit += get_loops(del_state);
 			for (int ind_next = sz_next - 1; ind_next >= 0; ind_next--) {
 				std::string adder = new_condit, second_cond;
 				auto next_trans = del_state->get_transition(ind_next);
+				if (next_trans.first == del_state)
+					continue;
 				second_cond = next_trans.second;
 				if (second_cond.size() == 1)
 					if (is_meta(second_cond))
 						second_cond = "%" + second_cond + "%";
 				adder += second_cond;
-				prev_trans.first->delete_transit(del_state, prev_trans.second);
-				next_trans.first->delete_prev(del_state, next_trans.second);
-				del_state->delete_transit(next_trans.first, next_trans.second);
 				bool is_find = false;
 				int sz_prev_trans = prev_trans.first->get_size_trans(), ind_of_next = 0;
 				for (ind_of_next; ind_of_next < sz_prev_trans; ind_of_next++) {
@@ -1094,41 +1194,285 @@ void Regul::exclude_other_states(Automata* start, Automata* end) {
 							if (is_meta(prev_to_next.second))
 								prev_to_next.second = "%" + prev_to_next.second + "%";
 						prev_trans.first->change_condit_trans(prev_to_next.second + "|" + adder, next_trans.first);
+						next_trans.first->change_condit_prev(prev_to_next.second + "|" + adder, prev_trans.first);
 						break;
 					}
 				}
-				if (!is_find)
+				if (!is_find) {
 					prev_trans.first->add_transit({ next_trans.first, adder });
+					next_trans.first->add_prev({ prev_trans.first, adder });
+				}
 			}
-			del_state->delete_prev(prev_trans.first, prev_trans.second);
+			if(prev_trans.first != del_state)
+				prev_trans.first->delete_transit(del_state, prev_trans.second);
+		}
+		sz_next = del_state->get_size_trans();
+		for (int i = sz_next - 1; i >= 0; i--) {
+			auto next_trans = del_state->get_transition(i);
+			next_trans.first->delete_prev(del_state, next_trans.second);
 		}
 		delete del_state;
 	}
 }
 
-Automata* Regul::find_redundant_state(Automata* start, Automata* end) {
+Automata* Regul::find_redundant_state(Automata* start, std::vector<Automata*> end) {
 	Automata* state = nullptr;
 	int sz = start->get_size_trans();
-	bool for_start = true, for_end = true;
 	for (int ind_st = 0; ind_st < sz; ind_st++) {
 		auto buf = start->get_transition(ind_st);
 		state = buf.first;
-		if ((state != start) && (state != end)) {
-			for_start = false;
+		if (state != start) {
+			bool is_end = false;
+			for (auto it : end)
+				if (it == state) {
+					is_end = true;
+					break;
+				}
+			if (!is_end)
+				return state;
+		}
+	}
+	for (auto it : end) {
+		sz = it->get_size_trans();
+		for (int ind_st = 0; ind_st < sz; ind_st++) {
+			auto buf = it->get_transition(ind_st);
+			state = buf.first;
+			if (state != start) {
+				bool is_end = false;
+				for (auto it : end)
+					if (it == state) {
+						is_end = true;
+						break;
+					}
+				if (!is_end)
+					return state;
+			}
+		}
+	}
+	return nullptr;
+}
+
+void Regul::lang_cross(const Regul& second_lang, Regul& result) {
+	if (result._st) {
+		del_Auto(result._st);
+		result._st = nullptr;
+		result._end_states.clear();
+	}
+	Automata* start = nullptr;
+	std::vector<Automata*> end;
+	if (equal_sets(_alphabet, second_lang._alphabet))
+		cart_product(second_lang, start, end);
+	else {
+		std::cout << "Alphabets weren't equal." << std::endl;
+		return;
+	}
+	result._st = start;
+	result._end_states = end;
+	result._alphabet = _alphabet;
+	result.expr = result.restore_regexpr();
+}
+
+void Regul::cart_product(const Regul& second_lang, Automata*& new_start, std::vector<Automata*>& new_end) const {
+	Automata* sec_st = second_lang._st;
+	std::vector<Automata*> sec_ends = second_lang._end_states, all_st_fir, all_st_sec;
+	get_all_states(_st, all_st_fir);
+	get_all_states(sec_st, all_st_sec);
+	int sz_fir_st = all_st_fir.size(), sz_sec_st = all_st_sec.size(), id = 1;
+	std::vector<std::vector<Automata*>> product_states;
+	for (int fir_ind = 0; fir_ind < sz_fir_st; fir_ind++)
+	{
+		std::vector<Automata*> adder;
+		for (int sec_ind = 0; sec_ind < sz_sec_st; sec_ind++) {
+			Automata* buf = new Automata(id++);
+			adder.push_back(buf);
+		}
+		product_states.push_back(adder);
+	}
+	for (int fir_ind = 0; fir_ind < sz_fir_st; fir_ind++)
+		for (int sec_ind = 0; sec_ind < sz_sec_st; sec_ind++) {
+			for (auto letter : _alphabet) {
+				auto fir_next = all_st_fir[fir_ind]->get_next_state(letter), sec_next = all_st_sec[sec_ind]->get_next_state(letter);
+				if ((all_st_fir[fir_ind]->get_receive()) && (all_st_sec[sec_ind]->get_receive()))
+					if(!product_states[fir_ind][sec_ind]->get_receive()) {
+						product_states[fir_ind][sec_ind]->change_receive(true);
+						new_end.push_back(product_states[fir_ind][sec_ind]);
+					}
+				int fir_find = 0, sec_find = 0;
+				for (; fir_find < sz_fir_st; fir_find++)
+					if (fir_next == all_st_fir[fir_find])
+						break;
+				if (fir_find == sz_fir_st)
+					throw std::out_of_range("First state wasn't found in vector of states");
+				for (; sec_find < sz_sec_st; sec_find++)
+					if (sec_next == all_st_sec[sec_find])
+						break;
+				if (sec_find == sz_sec_st)
+					throw std::out_of_range("Second state wasn't found in vector of states");
+				product_states[fir_ind][sec_ind]->add_transit(product_states[fir_find][sec_find], letter);
+				product_states[fir_find][sec_find]->add_prev(product_states[fir_ind][sec_ind], letter);
+			}
+		}
+	new_start = product_states[0][0];
+	get_all_states(new_start, all_st_fir);
+	int sz_new = all_st_fir.size();
+	for (int fir_ind = 0; fir_ind < sz_fir_st; fir_ind++)
+		for (int sec_ind = 0; sec_ind < sz_sec_st; sec_ind++) {
+			bool is_find = false;
+			for (int ind_st = 0; ind_st < sz_new; ind_st++)
+				if (all_st_fir[ind_st] == product_states[fir_ind][sec_ind]) {
+					is_find = true;
+					break;
+				}
+			if (!is_find) {
+				int sz = new_end.size();
+				for (int i = sz - 1; i >= 0; i--)
+					if (product_states[fir_ind][sec_ind] == new_end[i])
+						new_end.erase(new_end.begin() + i);
+				sz = product_states[fir_ind][sec_ind]->get_size_trans();
+				for (int i = 0; i < sz; i++) {
+					auto next = product_states[fir_ind][sec_ind]->get_transition(i);
+					next.first->delete_prev(product_states[fir_ind][sec_ind]);
+				}
+				sz = product_states[fir_ind][sec_ind]->get_size_prev();
+				for (int i = 0; i < sz; i++) {
+					auto prev = product_states[fir_ind][sec_ind]->get_prev(i);
+					prev.first->delete_transit(product_states[fir_ind][sec_ind]);
+				}
+				delete product_states[fir_ind][sec_ind];
+			}
+		}
+}
+
+void Regul::get_all_states(Automata* start, std::vector<Automata*>& states) const {
+	int sz_states = states.size();
+	for (int i = 0; i < sz_states; i++)
+		if (states[i] == start)
+			return;
+	states.push_back(start);
+	if (!start)
+		throw std::invalid_argument("Pointer was 'nullptr'");
+	int sz_trans = start->get_size_trans();
+	for (int i = 0; i < sz_trans; i++)
+		get_all_states(start->get_transition(i).first, states);
+}
+
+void Regul::inversion() {
+	std::string regexpr = restore_regexpr();
+	inverse_regexpr(regexpr);
+	compile(regexpr);
+}
+
+void Regul::inverse_regexpr(std::string& str) const {
+	int fir_ind_brack = 0, fir_ind_or = 0, sec_ind = 0, len = str.length(), dop = 0;
+	for (; sec_ind < len; sec_ind++) {
+		switch (str[sec_ind]) {
+		case '%':
+			if (((sec_ind + 2 < len) && (expr[sec_ind + 2] == '%')) ||
+				((sec_ind + 4 < len) && (expr.substr(sec_ind + 1, 4) == "...%")))
+			{
+				sec_ind += 2;
+				while (expr[sec_ind] != '%')
+					sec_ind++;
+			}
+			else throw std::invalid_argument("This symbol should be in pair like %c%");
+			break;
+		case '|':
+		{
+			std::string adder = str.substr(fir_ind_or, sec_ind - fir_ind_or);
+			inverse_str(adder);
+			int len_add = adder.length();
+			if (len_add != sec_ind - fir_ind_or)
+				throw std::length_error("Unexpected situation. Length of reversed string wasn't equal to length of string");
+			for (int k = 0; k < len_add; k++)
+				str[fir_ind_or + k] = adder[k];
+			fir_ind_or = sec_ind + 1;
+		}
+			break;
+		case '(':
+			fir_ind_brack = sec_ind + 1; sec_ind++;
+			while ((sec_ind < len) && ((str[sec_ind] != ')') || (dop))) {
+				if (str[sec_ind] == '(')
+					dop++;
+				if (str[sec_ind] == ')')
+					dop--;
+				sec_ind++;
+			}
+			if (sec_ind < len) {
+				std::string add = str.substr(fir_ind_brack, sec_ind - fir_ind_brack);
+				inverse_regexpr(add);
+				int len_add = add.length();
+				if (len_add != sec_ind - fir_ind_brack)
+					throw std::length_error("Unexpected situation. Length of reversed string wasn't equal to length of string");
+				for (int k = 0; k < len_add; k++)
+					str[fir_ind_brack + k] = add[k];
+			}
+			else
+				throw std::invalid_argument("Insufficient number of brackets");
+			break;
+		case ')':
+			throw std::invalid_argument("There shouldn't be unchecked symbol ')'");
 			break;
 		}
 	}
-	if (for_start) {
-		sz = end->get_size_trans();
-		for (int ind_st = 0; ind_st < sz; ind_st++) {
-			auto buf = end->get_transition(ind_st);
-			state = buf.first;
-			if ((state != start) && (state != end))
-				for_end = true;
-				break;
+	std::string adder = str.substr(fir_ind_or, sec_ind - fir_ind_or);
+	inverse_str(adder);
+	int len_add = adder.length();
+	if (len_add != sec_ind - fir_ind_or)
+		throw std::length_error("Unexpected situation. Length of reversed string wasn't equal to length of string");
+	for (int k = 0; k < len_add; k++)
+		str[fir_ind_or + k] = adder[k];
+}
+
+void Regul::inverse_str(std::string& str) const {
+	int len = str.length();
+	std::string res(str);
+	for (int i = 0, from_end = len - 1; i < len; i++, from_end--) {					// aab...cdc...(bg|ga)|fd	->	(gb|ag)c...dcb...aa|df
+		switch (str[i]) {															// (gb|ag)c...dcb...aa
+		case '%':
+			if ((i + 2 < len) && (str[i + 2] == '%'))
+			{
+				int count = 0;
+				if ((i + 5 < len) && (str[i + 3] == '.') && (str[i + 4] == '.') && (str[i + 5] == '.'))
+					count = 5;
+				else
+					count = 2;
+				i += count;
+				for (int k = 0; k < count + 1; k++, from_end--)
+					res[from_end] = str[i - k];
+				from_end++;
+			}
+			else throw std::invalid_argument("This symbol should be in pair like %c%");
+			break;
+		case '(':
+		{
+			int ind_copy = 1, dop = 0, sec_ind = i + 1;
+			while ((sec_ind < len) && ((str[sec_ind] != ')') || (dop))) {
+				if (str[sec_ind] == '(')
+					dop++;
+				if (str[sec_ind] == ')')
+					dop--;
+				sec_ind++;
+				ind_copy++;
+			}
+			if ((sec_ind + 3 < len) && (str[sec_ind + 1] == '.') && (str[sec_ind + 2] == '.') && (str[sec_ind + 3] == '.'))
+				ind_copy += 3;
+			from_end -= ind_copy;
+			for (int k = 0; k <= ind_copy; k++, i++)
+				res[from_end + k] = str[i];
+			i--;
 		}
-		if (for_end)
-			return nullptr;
+			break;
+		default:
+			if ((i + 3 < len) && (str[i + 1] == '.') && (str[i + 2] == '.') && (str[i + 3] == '.')) {
+				i += 3;
+				for (int k = 0; k < 4; k++, from_end--)
+					res[from_end] = str[i - k];
+				from_end++;
+			}
+			else
+				res[from_end] = str[i];
+			break;
+		}
 	}
-	return state;
+	str = res;
 }
