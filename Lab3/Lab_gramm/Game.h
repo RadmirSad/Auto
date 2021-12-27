@@ -4,29 +4,36 @@
 
 enum directions {
 	NORTH,
-	SOUTH,
 	EAST,
+	SOUTH,
 	WEST
+};
+
+enum objects {
+	WALL,
+	EXIT,
+	EMPTY
 };
 
 class Robot {
 private:
-	std::pair<int, int> coord;
+	int x_coord = 0;
+	int y_coord = 0;
 	char direct = NORTH;
 
-	std::vector<std::vector<int>> my_map;
+	std::vector<std::vector<objects>> my_map;
 public:
 	Robot() {};
-	Robot(int x, int y, directions new_dir): coord(x, y), direct(new_dir) {};
+	Robot(int x, int y, directions new_dir, const std::vector<std::vector<objects>>& new_map);
 
 	char get_dir() const { return direct; }
-	void set_map(const std::vector<std::vector<int>>& new_map) { my_map = new_map; }
+	void set_map(const std::vector<std::vector<objects>>& new_map) { my_map = new_map; }
 
 	int wall() const;
 	bool exit() const;
 
 	bool move(int num);
 
-	void left();
-	void right();
+	void left() { direct = (direct + 3) % 4; }
+	void right() { direct = (direct + 1) % 4; }
 };
