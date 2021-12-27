@@ -1,46 +1,53 @@
-%require "3.2"
-%language "c++"
-
 %{
 	#include <cstdarg>
-	#include "Lab_gramm/actions.cpp"
-	
-	int yylex();
-	int yyparse();
-	
-	template <typename T>
-	DefaultNode* create_data(T info);
-
-	DefaultNode* oper(const std::string& type_of_oper, int num,...);
-	DefaultNode* upg_dim(DefaultNode* node);
-	
-	std::map<std::string, DefaultNode*> variables;
-	
-	Robot* my_robot = nullptr;
 %}
 
-%union {
-	bool bVal;
-	int iVal;
-	std::string* sVal;
-	DefaultNode* dNode;
-};
+%require "3.0.4"
+%defines "Parser.hpp"
+%define api.value.type {union YYSTYPE}
+%output "Parser.cpp"
+%locations
+
+%code requires {
+	#include "nodes.h"
+	#define YYDEBUG 1
+}
+
+%code provides {
+	extern FILE * yyin;
+	extern int yylex();
+	extern void yyerror(const char* str);
+	void init();
+	void delAll();
+	int exec(DefaultNode* par);
+	void delTree(DefaultNode*& par);
+	
+	DefaultNode* create_data(int info);
+	DefaultNode* create_data(bool info);
+
+	DefaultNode* oper(const std::string& type_of_oper, int num,...);
+	DefaultNode* get_var(std::string* str);
+	DefaultNode* get_type(std::string* new_type);
+	DefaultNode* find_var(DefaultNode* var);
+}
 
 %token <bVal> BOOL_VAL
 %token <iVal> NUMBER
 %token <sVal> NAME TYPE
-%token CONST VECT MATRIX
-%token FOR IF BEGIN BEGIN_FOR BEGIN_IF END END_IF END_FOR WORD_FUNC
-%token SUM SR SL AND ELEM_MULT ASSIGN TRANSPON ENDL
+%token <iVal> CONST VECT MATRIX
+%token <iVal> FOR IF BEG BEGIN_FOR BEGIN_IF END END_IF END_FOR WORD_FUNC
+%token <iVal> SUM SR SL AND ELEM_MULT ASSIGN TRANSPON ENDL
 
-%token MOVE WALL EXIT RIGHT LEFT
+%token <iVal> MOVE WALL_FUNC EXIT_FUNC RIGHT LEFT PRINT
 
+%precedence ASSIGN
 %left '>' '<' AND
-%left '+' '-'
+%left '+' 
+%left '-'
 %left '*' ELEM_MULT
-%left SR SL
-%left TRANSPON
-%left '!'
+%precedence SR SL
+%precedence TRANSPON
+%precedence '!'
 
 %type <dNode> data expr var_declar argument_list empty_var_declar expr_matr_or_vect
 %type <dNode> empty_argument_list function_actions sent sent_list program error
@@ -48,8 +55,8 @@
 %%
 
 program:
-		sent_list						{ exec($1); delTree($1); exit(0);}
-		| 								{ $$ = nullptr; init(); }		
+		sent_list						{ exec($1); delTree($1); delAll(); exit(0);}
+		| %empty						{ $$ = nullptr; init(); }
 		;
 
 sent_list:
@@ -58,24 +65,25 @@ sent_list:
 		;
 
 sent:
-		var_declar ENDL						{ $$ = $1; }
+		var_declar ENDL						{ $$ = oper("new_decl", 1, $1); }
 		| CONST var_declar ENDL				{ $$ = oper("const", 1, $2); }
-		| function_actions ENDL				{ $$ = oper("func", 1, $1); }
-		| FOR NAME '=' expr ':' expr ENDL beg_for ENDL sent_list ENDL end_for ENDL			{ $$ = oper("for", 4, $2, $4, $6, $10); }
+		| function_actions ENDL				{ $$ = oper("func_act", 1, $1); }
+		| FOR NAME '=' expr ':' expr ENDL beg_for ENDL sent_list ENDL end_for ENDL			{ $$ = oper("for", 4, get_var($2), $4, $6, $10); }
 		| IF expr ENDL beg_if ENDL sent_list ENDL end_if ENDL								{ $$ = oper("if", 2, $2, $6); }
-		| expr ENDL							{ $$ = $1; }
+		| expr ENDL							{ $$ = oper("new_expr", 1, $1); }
 		| LEFT ENDL							{ $$ = oper("left", 0); }
 		| RIGHT	ENDL						{ $$ = oper("right", 0); }
+		| PRINT '(' expr ')' ENDL			{ $$ = oper("print", 1, $3); }
 		;
 
 beg_for:
 		BEGIN_FOR
-		| BEGIN
+		| BEG
 		;
 
 beg_if:
 		BEGIN_IF
-		| BEGIN
+		| BEG
 		;
 
 end_for:
@@ -89,12 +97,12 @@ end_if:
 		;
 
 function_actions:
-	'[' empty_argument_list ']' '=' WORD_FUNC NAME '(' empty_argument_list ',' argument_list ')' ENDL BEGIN ENDL sent_list END	{ $$ = oper("cr_func1", 5, $2, $6, $8, $10, $15); }
-	| '[' empty_argument_list ']' '=' WORD_FUNC NAME '(' argument_list ')' ENDL BEGIN ENDL sent_list END						{ $$ = oper("cr_func2", 4, $2, $6, $8, $10, $13); }
-	| '[' empty_argument_list ']' '=' WORD_FUNC NAME '(' empty_argument_list ')' ENDL BEGIN ENDL sent_list END					{ $$ = oper("cr_func3", 4, $2, $6, $8, $10, $13); }
-	| '[' empty_argument_list ']' '=' WORD_FUNC NAME '(' ')' ENDL BEGIN ENDL sent_list END										{ $$ = oper("cr_func4", 3, $2, $6, $8, $10, $12); }
-	| NAME '[' expr_matr_or_vect ']'		{ $$ = oper("call", 2, $1, $3); }
-	| NAME '[' ']'							{ $$ = oper("e_call", 1, $1); }
+	'[' empty_argument_list ']' '=' WORD_FUNC NAME '(' empty_argument_list ',' argument_list ')' ENDL BEG ENDL sent_list END	{ $$ = oper("cr_func1", 5, $2, get_var($6), $8, $10, $15); }
+	| '[' empty_argument_list ']' '=' WORD_FUNC NAME '(' argument_list ')' ENDL BEG ENDL sent_list END						{ $$ = oper("cr_func2", 4, $2, get_var($6), $8, $13); }
+	| '[' empty_argument_list ']' '=' WORD_FUNC NAME '(' empty_argument_list ')' ENDL BEG ENDL sent_list END					{ $$ = oper("cr_func3", 4, $2, get_var($6), $8, $13); }
+	| '[' empty_argument_list ']' '=' WORD_FUNC NAME '(' ')' ENDL BEG ENDL sent_list END										{ $$ = oper("cr_func4", 3, $2, get_var($6), $12); }
+	| NAME '[' expr_matr_or_vect ']'		{ $$ = oper("call", 2, get_var($1), $3); }
+	| NAME '[' ']'							{ $$ = oper("e_call", 1, get_var($1)); }
 	;
 
 empty_argument_list:
@@ -103,9 +111,9 @@ empty_argument_list:
 		;
 
 empty_var_declar:
-		MATRIX TYPE NAME				{ $$ = oper("m_e_decl", 2, $2, $3); }
-		| VECT TYPE NAME				{ $$ = oper("v_e_decl", 2, $2, $3); }
-		| TYPE NAME						{ $$ = oper("e_decl", 2, $1, $2); }
+		MATRIX TYPE NAME				{ $$ = oper("m_e_decl", 2, get_type($2), get_var($3)); }
+		| VECT TYPE NAME				{ $$ = oper("v_e_decl", 2, get_type($2), get_var($3)); }
+		| TYPE NAME						{ $$ = oper("e_decl", 2, get_type($1), get_var($2)); }
 		;
 
 argument_list:
@@ -114,9 +122,9 @@ argument_list:
 		;
 
 var_declar:
-		MATRIX TYPE NAME '=' expr		{ $$ = oper("m_decl", 3, $2, $3, $5); }
-		| VECT TYPE NAME '=' expr		{ $$ = oper("v_decl", 3, $2, $3, $5); }
-		| TYPE NAME '=' expr			{ $$ = oper("decl", 3, $1, $2, $4); }
+		MATRIX TYPE NAME '=' expr		{ $$ = oper("m_decl", 3, get_type($2), get_var($3), $5); }
+		| VECT TYPE NAME '=' expr		{ $$ = oper("v_decl", 3, get_type($2), get_var($3), $5); }
+		| TYPE NAME '=' expr			{ $$ = oper("decl", 3, get_type($1), get_var($2), $4); }
 		;
 
 
@@ -128,11 +136,11 @@ expr_matr_or_vect:
 expr:
 		data							{ $$ = $1; }
 		| '{' expr_matr_or_vect '}'		{ $$ = oper("matr_vect", 1, $2); }
-		| NAME							{ $$ = oper("get_var", 1, $1); }
-		| NAME '(' expr ',' expr ')'	{ $$ = oper("coord", 3, $1, $3, $5); }
+		| NAME							{ $$ = find_var(get_var($1)); }
+		| NAME '(' expr ',' expr ')'	{ $$ = oper("coord", 3, find_var(get_var($1)), $3, $5); }
 		| MOVE '(' expr ')'				{ $$ = oper("move", 1, $3); }
-		| WALL							{ $$ = oper("wall", 0); }
-		| EXIT							{ $$ = oper("exit", 0); }
+		| WALL_FUNC						{ $$ = oper("wall", 0); }
+		| EXIT_FUNC						{ $$ = oper("exit", 0); }
 		| expr '+' expr					{ $$ = oper("+", 2, $1, $3); }
 		| expr '-' expr					{ $$ = oper("-", 2, $1, $3); }
 		| expr SL						{ $$ = oper("sl", 1, $1); }
@@ -141,20 +149,20 @@ expr:
 		| expr '>' expr					{ $$ = oper("gt", 2, $1, $3); }
 		| expr AND expr					{ $$ = oper("and", 2, $1, $3); }
 		| '!' expr						{ $$ = oper("not", 1, $2); }
-		| NAME '(' expr ',' '[' ':' ']' ')'	{ $$ = oper("get_col", 2, $1, $3); }
-		| NAME '(' expr ',' '[' ']' ')'		{ $$ = oper("get_col", 2, $1, $3); }
-		| NAME '(' '[' ':' ']' ',' expr ')'	{ $$ = oper("get_str", 2, $1, $7); }
-		| NAME '(' '[' ']' ',' expr ')'		{ $$ = oper("get_str", 2, $1, $6); }
 		| expr ELEM_MULT expr			{ $$ = oper("el_mul", 2, $1, $3); }
 		| expr '*' expr					{ $$ = oper("mul", 2, $1, $3); }
 		| expr TRANSPON					{ $$ = oper("transpon", 1, $1); }
-		| NAME '(' expr ')'				{ $$ = oper("log_matr", 2, $1, $3); }
+		| NAME '(' expr ',' '[' ':' ']' ')'	{ $$ = oper("get_col", 2, find_var(get_var($1)), $3); }
+		| NAME '(' expr ',' '[' ']' ')'		{ $$ = oper("get_col", 2, find_var(get_var($1)), $3); }
+		| NAME '(' '[' ':' ']' ',' expr ')'	{ $$ = oper("get_str", 2, find_var(get_var($1)), $7); }
+		| NAME '(' '[' ']' ',' expr ')'		{ $$ = oper("get_str", 2, find_var(get_var($1)), $6); }
+		| NAME '(' expr ')'				{ $$ = oper("log_matr", 2, find_var(get_var($1)), $3); }
 		| SUM '(' expr ')'				{ $$ = oper("sum", 1, $3); }
-		| NAME ASSIGN expr				{ $$ = oper("eq", 2, $1, $3); }
-		| TYPE '(' expr ')'				{ $$ = oper("ch_tp", 2, $1, $3); }
-		| VECT '(' expr ',' NUMBER ')'	{ $$ = oper("make_v", 2, $3, $5); }
-		| MATRIX '(' expr ',' NUMBER ',' NUMBER ')'	{ $$ = oper("make_m1", 3, $3, $5, $7); }
-		| MATRIX '(' expr ',' NUMBER ')'	{ $$ = oper("make_m2", 2, $3, $5); }
+		| NAME ASSIGN expr				{ $$ = oper("eq", 2, find_var(get_var($1)), $3); }
+		| TYPE '(' expr ')'				{ $$ = oper("ch_tp", 2, get_type($1), $3); }
+		| VECT '(' expr ',' expr ')'	{ $$ = oper("make_v", 2, $3, $5); }
+		| MATRIX '(' expr ',' expr ',' expr')'	{ $$ = oper("make_m1", 3, $3, $5, $7); }
+		| MATRIX '(' expr ',' expr ')'	{ $$ = oper("make_m2", 2, $3, $5); }
 		;
 		
 data:
@@ -163,19 +171,55 @@ data:
 		;
 
 %%
-
 // {	std::cout << "Error at line: " << @2.first_line << std::endl;	}
 
-template <typename T>
-DefaultNode* create_data(T info) {
-	std::string str = typeid(info).name();
-	DefaultNode* dt = nullptr;
-	if((str == "bool") || (str == "int")) {
-		dt = new DataNode(info);
-		if(dt == nullptr)
-			yyerror("Out of memory");
+int exec(DefaultNode* par) {
+	bypassTree(par);
+}
+
+void init() {
+	read_file();
+	std::map<std::string, DefaultNode*> adder;
+	func_variables.push_back(adder);
+}
+
+void delTree(DefaultNode*& par) {
+	if (par) {
+		int sz = par->get_size_vect();
+		for (int i = 0; i < sz; i++) {
+			auto ptr = par->get_node(i);
+			delTree(ptr);
+		}
+		delete par;
 	}
-	else yyerror("Incorrect type of data");	
+}
+
+void delAll() {
+	for (auto mp : func_variables)
+		for (auto pr : mp)
+			delete pr.second;
+	func_variables.clear();
+	for (auto pr : func_params)
+		for (auto it : pr.second)
+			delete it;
+	func_params.clear();
+	func_sentenses.clear();
+}
+
+DefaultNode* create_data(bool info) {
+	DefaultNode* dt = nullptr;
+	std::cout << info << std::endl;
+	dt = new DataNode(info);
+	if(dt == nullptr)
+		yyerror("Out of memory");
+	return dt;
+}
+
+DefaultNode* create_data(int info) {
+	DefaultNode* dt = nullptr;
+	dt = new DataNode(info);
+	if(dt == nullptr)
+		yyerror("Out of memory");
 	return dt;
 }
 
@@ -192,31 +236,27 @@ DefaultNode* oper(const std::string& type_of_oper, int num,...) {
 	return new_oper;
 }
 
-DefaultNode* upg_dim(DefaultNode* node) {
-	std::string str, buf;
-	node->get_type(str);
-	buf = str[0];
-	if(buf == "v") {
-		buf = "m_";
-		buf.append(str.cbegin() + 2, str.cend());
-	}
-	else if(buf == "m") {
-		yyerror("Unknown dimension of data.");
-		buf = str;
-	}
-	else {
-		buf = "v_";
-		buf.append(str);
-	}
-	node->set_type(buf);
-	return node;
+DefaultNode* get_type(std::string* new_type) {
+	DefaultNode* type_node = new DataNode;
+	type_node->set_type(*new_type);
+	delete new_type;
+	return type_node;
+}
+
+DefaultNode* get_var(std::string* str) {
+	DefaultNode* var = new DataNode;
+	var->set_var_name(*str);
+	delete str;
+	return var;
+}
+
+DefaultNode* find_var(DefaultNode* var) {
+	return oper("get_var", 1, var);
 }
 
 int main() {
-	std::ifstream MyFile;
-	MyFile.open("robot.txt");
-	
+	yyin = fopen("easy.txt", "r");
 	yyparse();
-	fclose (yyin);
+	fclose(yyin);
 	return 0;
 }
