@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 #include <iostream>
+#include <chrono>
+#include <thread>
 
 enum directions {
 	NORTH,
@@ -28,12 +30,13 @@ public:
 
 	char get_dir() const { return direct; }
 	void set_map(const std::vector<std::vector<objects>>& new_map) { my_map = new_map; }
+	void print_map() const;
 
 	int wall() const;
 	bool exit() const;
 
 	bool move(int num);
 
-	void left() { direct = (direct + 3) % 4; }
-	void right() { direct = (direct + 1) % 4; }
+	void left() { direct = (direct + 3) % 4; print_map(); }
+	void right() { direct = (direct + 1) % 4; print_map(); }
 };

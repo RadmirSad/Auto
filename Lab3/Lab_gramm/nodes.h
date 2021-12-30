@@ -21,7 +21,7 @@ enum err {
 extern Robot* my_robot;
 
 std::string what_type(const std::string& str);
-void yyerror(const char* str);
+void yyerror(const std::string& str);
 void init();
 void delAll();
 
@@ -118,12 +118,13 @@ void not_bool(DefaultNode* ptr);
 void sl(DefaultNode* ptr);
 void sr(DefaultNode* ptr);
 void move(DefaultNode* ptr);
-void get_variable(DefaultNode* ptr);
+void get_variable(DefaultNode*& ptr);
 void matr_vect(DefaultNode* ptr);
 void e_call(DefaultNode* ptr);
 void new_decl(DefaultNode* var);
 void e_call(DefaultNode* func_name);
 void my_print(DefaultNode* elem);
+void get_size(DefaultNode* vect);
 
 /*			Two ptrs			*/
 
@@ -132,7 +133,7 @@ void init_two(DefaultNode* fir, DefaultNode*& sec);
 void make_m2(DefaultNode* vect, DefaultNode*& new_sz);
 void make_v(DefaultNode* scalar, DefaultNode*& new_sz);
 void change_type(DefaultNode* expr, DefaultNode*& new_type);
-void equality(DefaultNode* expr, DefaultNode*& new_val);
+void equality(DefaultNode*& expr, DefaultNode*& new_val);
 void log_matr(DefaultNode* var, DefaultNode*& logical_matr);
 void mul(DefaultNode* fir_matr, DefaultNode*& sec_matr);
 void el_mul(DefaultNode* fir_matr, DefaultNode*& sec_matr);
@@ -148,6 +149,7 @@ void v_e_decl(DefaultNode* var, DefaultNode*& type);
 void m_e_decl(DefaultNode* var, DefaultNode*& type);
 void call(DefaultNode* func, DefaultNode*& params);
 void do_if(DefaultNode*& condit, DefaultNode* sent);
+void do_push(DefaultNode*& var_name, DefaultNode*& new_val);
 
 /*			Three ptrs			*/
 
@@ -162,7 +164,7 @@ void m_decl(DefaultNode* var_name, DefaultNode*& type, DefaultNode*& expr);
 /*			Four and five ptrs			*/
 
 void cr_func(DefaultNode* func_name, DefaultNode* related_vars, DefaultNode* e_params, DefaultNode* params, DefaultNode* sent_list);
-void do_for(DefaultNode* name_scal, DefaultNode*& start_val, DefaultNode*& end_val, DefaultNode* sent_list);
+void do_for(DefaultNode*& name_scal, DefaultNode*& start_val, DefaultNode*& end_val, DefaultNode* sent_list);
 
 class DataNode: public DefaultNode {
 private:

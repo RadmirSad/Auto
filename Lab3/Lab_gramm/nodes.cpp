@@ -1,5 +1,11 @@
 #include "nodes.h"
 
+
+Robot* my_robot = nullptr;
+std::vector<std::map<std::string, DefaultNode*>> func_variables;
+std::map<std::string, DefaultNode*> func_sentenses;
+std::map<std::string, std::vector<DefaultNode*>> func_params;
+
 /*		Methods for tree		*/
 
 
@@ -39,11 +45,20 @@ DefaultNode* zero_nodes(DefaultNode* par) {
 	DefaultNode* ptr = nullptr;
 	par->get_type(tp_action);
 	SWITCH (tp_action) {
+		CASE("get_map"):
+			my_robot->print_map();
+			ptr = new DataNode;
+			ptr->change_empty(true);
+			break;
 		CASE("left") :
 			my_robot->left();
+			ptr = new DataNode;
+			ptr->change_empty(true);
 			break;
 		CASE("right") :
 			my_robot->right();
+			ptr = new DataNode;
+			ptr->change_empty(true);
 			break;
 		CASE("exit") :
 			ptr = new DataNode(my_robot->exit());
@@ -69,19 +84,29 @@ DefaultNode* one_node(DefaultNode* par) {
 			sum(fir_leaf);
 			break;
 		CASE("transpon") :
-			transpon(fir_leaf);
+			if (fir_leaf->get_empty())
+				yyerror("This is an undefined variable");
+			else transpon(fir_leaf);
 			break;
 		CASE("not") :
-			not_bool(fir_leaf);
+			if (fir_leaf->get_empty())
+				yyerror("This is an undefined variable");
+			else not_bool(fir_leaf);
 			break;
 		CASE("sl") :
-			sl(fir_leaf);
+			if (fir_leaf->get_empty())
+				yyerror("This is an undefined variable");
+			else sl(fir_leaf);
 			break;
 		CASE("sr") :
-			sr(fir_leaf);
+			if (fir_leaf->get_empty())
+				yyerror("This is an undefined variable");
+			else sr(fir_leaf);
 			break;
 		CASE("move") :
-			move(fir_leaf);
+			if (fir_leaf->get_empty())
+				yyerror("This is an undefined variable");
+			else move(fir_leaf);
 			break;
 		CASE("get_var") :
 			get_variable(fir_leaf);
@@ -90,7 +115,9 @@ DefaultNode* one_node(DefaultNode* par) {
 			matr_vect(fir_leaf);
 			break;
 		CASE("e_call") :
-			e_call(fir_leaf);
+			if (fir_leaf->get_empty())
+				yyerror("This is an undefined variable");
+			else e_call(fir_leaf);
 			break;
 		CASE("const") :
 			new_decl(fir_leaf);
@@ -100,7 +127,13 @@ DefaultNode* one_node(DefaultNode* par) {
 			new_decl(fir_leaf);
 			break;
 		CASE("print") :
-			my_print(fir_leaf);
+			if (fir_leaf->get_empty())
+				yyerror("This is an undefined variable");
+			else my_print(fir_leaf);
+		CASE("get_size") :
+			if (fir_leaf->get_empty())
+				yyerror("This is an undefined variable");
+			else get_size(fir_leaf);
 		CASE("func_act") : CASE("new_expr") :
 			break;
 		default:
@@ -153,10 +186,10 @@ void transpon(DefaultNode* matrix) {
 	matrix->get_type(data_tp);
 	if (matrix->check_oper())
 		yyerror("Incorrect type: it is operation type");
-	if((data_tp == "m_int") && (data_tp == "m_bool")) {
+	if((data_tp == "m_int") || (data_tp == "m_bool")) {
 		std::vector<std::vector<int>> new_matrix;
 		std::vector<int> add;
-		err code;
+		err code = OK;
 		auto [str_sz, col_sz] = matrix->get_size_matr();
 		for (int i = 0; i < col_sz; i++) {
 			for (int j = 0; j < str_sz; j++) {
@@ -167,6 +200,7 @@ void transpon(DefaultNode* matrix) {
 			new_matrix.push_back(add);
 			add.clear();
 		}
+		matrix->change_matrix(new_matrix);
 		matrix->set_var_name("");
 		matrix->change_const(true);
 	}
@@ -304,12 +338,12 @@ void move(DefaultNode* ptr) {
 	ptr->set_var_name("");
 }
 
-void get_variable(DefaultNode* ptr) {
+void get_variable(DefaultNode*& ptr) {
 	std::string str = ptr->get_var_name();
 	DefaultNode* node = nullptr;
 	for (int last_func_ind = func_variables.size() - 1; last_func_ind >= 0; last_func_ind--) {
 		auto search = func_variables[last_func_ind].find(str);
-		if (search != func_variables[last_func_ind].cend()) {
+		if (search != func_variables[last_func_ind].end()) {
 			node = new DataNode((*search).second);
 			break;
 		}
@@ -319,10 +353,7 @@ void get_variable(DefaultNode* ptr) {
 		yyerror(dop.c_str());
 		return;
 	}
-	if (node->get_empty()) {
-		yyerror("This is an undefined variable");
-		return;
-	}
+	delete ptr;
 	ptr = node;
 }
 
@@ -382,20 +413,27 @@ void matr_vect(DefaultNode* ptr) {
 void e_call(DefaultNode* func_name) {
 	std::string name = func_name->get_var_name();
 	auto search_func = func_sentenses.find(name);
-	if (search_func == func_sentenses.cend()) {
+	if (search_func == func_sentenses.end()) {
 		yyerror("Function with this name doesn't exist");
 		return;
 	}
-	auto search_params = func_params.find(name);
-	if (search_params == func_params.cend()) {
-		yyerror("Unexpected error: parameters were not declared for the function");
-		return;
-	}
-	if (!(*search_params).second.empty()) {
-		yyerror("Unexpected behaviour: there are some parameters for function without parameters");
-		return;
-	}
 	std::map<std::string, DefaultNode*> add;
+	auto search_params = func_params.find(name);
+	if (search_params != func_params.end()) {
+		auto vect_params = (*search_params).second;
+		if (!vect_params.empty()) {
+			int sz_par = vect_params.size();
+			err code = OK;
+			for (int i = 0; i < sz_par; i++) {
+				if(vect_params[i]->get_empty()) {
+					yyerror("Incorrect number of parameters");
+					return;
+				}
+				DefaultNode* new_var = new DataNode(vect_params[i]);
+				add.insert({new_var->get_var_name(), new_var});
+			}
+		}
+	}
 	func_variables.push_back(add);
 	bypassTree((*search_func).second);
 	int last = func_variables.size() - 1;
@@ -408,7 +446,7 @@ void new_decl(DefaultNode* var) {
 	var->change_const(false);
 	std::string var_name = var->get_var_name();
 	auto search = func_variables[func_variables.size() - 1].find(var_name);
-	if(search != func_variables[func_variables.size() - 1].cend())
+	if(search == func_variables[func_variables.size() - 1].end())
 		func_variables[func_variables.size() - 1].insert({ var_name, var });
 	else yyerror("Variable with this name has already been created");
 }
@@ -423,17 +461,19 @@ void my_print(DefaultNode* elem) {
 	if (!my_name.empty()) {
 		std::cout << "Variable with name: " << my_name;
 		if (elem->get_empty())
-			std::cout << " (empty)" << std::endl;
+			std::cout << " (empty)";
 	}
 	bool flag = false;
-	std::cout << "Content:";
+	std::cout << std::endl << "Content:";
 	SWITCH(my_type) {
 		CASE("bool") :
 			flag = true;
 		CASE("int") :
 			if (flag) {
 				int num = elem->get_elem(code);
-				std::cout << bool(num) << " (" << num << ')' << std::endl;
+				if(num)
+					std::cout << "true" << " (" << num << ')' << std::endl;
+				else std::cout << "false" << " (" << num << ')' << std::endl;
 			}
 			else std::cout << elem->get_elem(code) << std::endl;
 			break;
@@ -445,8 +485,11 @@ void my_print(DefaultNode* elem) {
 			int sz = buf.size();
 			std::cout << std::endl;
 			for (int i = 0; i < sz; i++)
-				if (flag)
-					std::cout << ' ' << bool(buf[i]) << " (" << buf[i] << ") ";
+				if (flag) {
+					if(buf[i])
+						std::cout << ' ' << "true" << " (" << buf[i] << ") ";
+					else std::cout << ' ' << "false" << " (" << buf[i] << ") ";
+				}
 				else std::cout << ' ' << buf[i] << ' ';
 			std::cout << std::endl;
 		}
@@ -459,14 +502,47 @@ void my_print(DefaultNode* elem) {
 			std::cout << std::endl;
 			for(int i = 0; i < buf.size(); i++) {
 				for(int j = 0; j < buf[0].size(); j++)
-					if (flag)
-						std::cout << ' ' << bool(buf[i][j]) << " (" << buf[i][j] << ") ";
+					if (flag) {
+						if(buf[i][j])
+							std::cout << ' ' << "true" << " (" << buf[i][j] << ") ";
+						else std::cout << ' ' << "false" << " (" << buf[i][j] << ") ";
+					}
 					else std::cout << ' ' << buf[i][j] << ' ';
 				std::cout << std::endl;
 			}
 		}
 			break;
 	}
+}
+
+void get_size(DefaultNode* vect) {
+	std::string my_type;
+	err code = OK;
+	vect->get_type(my_type);
+	bool is_vector = false;
+	switch(my_type[0]) {
+		case 'v':
+			is_vector = true;
+		case 'i': case 'b':
+			vect->set_type("int");
+			vect->change_info(is_vector? vect->get_size_vect() : 1, code);
+			if(code != OK) {
+				error_type(code);
+				return;
+			}
+		break;
+		case 'm': {
+			vect->set_type("v_int");
+			auto [sz_str, sz_col] = vect->get_size_matr();
+			vect->change_vector({sz_str, sz_col});	// look here plz
+		}
+		break;
+		default:
+			yyerror("Unknown data type");
+			return;
+	}
+	vect->set_var_name("");
+	vect->change_const("true");
 }
 
 DefaultNode* two_nodes(DefaultNode* par) {
@@ -479,60 +555,88 @@ DefaultNode* two_nodes(DefaultNode* par) {
 	SWITCH(tp_action) {
 		CASE("make_m2") :
 			sec_leaf = bypassTree(par->get_node(1));
-			make_m2(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else make_m2(fir_leaf, sec_leaf);
 			break;
 		CASE("make_v") :
 			sec_leaf = bypassTree(par->get_node(1));
-			make_v(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else make_v(fir_leaf, sec_leaf);
 			break;
 		CASE("ch_tp") :
 			sec_leaf = bypassTree(par->get_node(1));
-			change_type(sec_leaf, fir_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else change_type(sec_leaf, fir_leaf);
 			fir_leaf = sec_leaf;
 			break;
 		CASE("eq") :
 			sec_leaf = bypassTree(par->get_node(1));
-			equality(fir_leaf, sec_leaf);
+			if (sec_leaf->get_empty())
+				yyerror("There are an undefined variable");
+			else equality(fir_leaf, sec_leaf);
 			break;
 		CASE("log_matr") :
 			sec_leaf = bypassTree(par->get_node(1));
-			log_matr(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else log_matr(fir_leaf, sec_leaf);
 			break;
 		CASE("mul") :
 			sec_leaf = bypassTree(par->get_node(1));
-			mul(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else mul(fir_leaf, sec_leaf);
 			break;
 		CASE("el_mul") :
 			sec_leaf = bypassTree(par->get_node(1));
-			el_mul(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else el_mul(fir_leaf, sec_leaf);
 			break;
 		CASE("get_str") :
 			sec_leaf = bypassTree(par->get_node(1));
-			get_str(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else get_str(fir_leaf, sec_leaf);
 			break;
 		CASE("get_col") :
 			sec_leaf = bypassTree(par->get_node(1));
-			get_col(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else get_col(fir_leaf, sec_leaf);
 			break;
 		CASE("and") :
 			sec_leaf = bypassTree(par->get_node(1));
-			do_and(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else do_and(fir_leaf, sec_leaf);
 			break;
 		CASE("gt") :
 			sec_leaf = bypassTree(par->get_node(1));
-			do_gt(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else do_gt(fir_leaf, sec_leaf);
 			break;
 		CASE("lt") :
 			sec_leaf = bypassTree(par->get_node(1));
-			do_lt(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else do_lt(fir_leaf, sec_leaf);
 			break;
 		CASE("-") :
 			sec_leaf = bypassTree(par->get_node(1));
-			minus(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else minus(fir_leaf, sec_leaf);
 			break;
 		CASE("+") :
 			sec_leaf = bypassTree(par->get_node(1));
-			plus(fir_leaf, sec_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else plus(fir_leaf, sec_leaf);
 			break;
 		CASE("e_decl") :
 			sec_leaf = bypassTree(par->get_node(1));
@@ -559,6 +663,10 @@ DefaultNode* two_nodes(DefaultNode* par) {
 			break;
 		CASE("if") :
 			do_if(fir_leaf, par->get_node(1));
+			break;
+		CASE("push"):
+			sec_leaf = bypassTree(par->get_node(1));
+			do_push(fir_leaf, sec_leaf);
 			break;
 		default:
 			throw std::logic_error("Incorrect number of parameters");
@@ -649,16 +757,33 @@ void change_type(DefaultNode* expr, DefaultNode*& new_type) {
 		expr->set_type(new_tp);
 		break;
 	case 'v': case 'm':
-		expr->set_type(prev_tp[0] + "_" + new_tp);
+		if(prev_tp[0] == 'm')
+			new_tp = "m_" + new_tp;
+		else new_tp = "v_" + new_tp;
+		expr->set_type(new_tp);
 		break;
 	default:
 		throw std::logic_error("Unexpected type of data");
 	}
-	new_type->get_type(new_tp);
 	init_two(expr, new_type);
 }
 
-void equality(DefaultNode* expr, DefaultNode*& new_val) {
+void equality(DefaultNode*& expr, DefaultNode*& new_val) {
+	std::string name = expr->get_var_name();
+	DefaultNode* ptr = nullptr;
+	for (int last_func_ind = func_variables.size() - 1; last_func_ind >= 0; last_func_ind--) {
+		auto search = func_variables[last_func_ind].find(name);
+		if (search != func_variables[last_func_ind].end()) {
+			ptr = (*search).second;
+			break;
+		}
+	}
+	if(!ptr) {
+		yyerror("Variable with this name doesn't exist");
+		return;
+	}
+	delete expr;
+	expr = ptr;
 	if (expr->get_const())
 		yyerror("Incorrect variable: the variable is constant");
 	else {
@@ -692,8 +817,7 @@ void equality(DefaultNode* expr, DefaultNode*& new_val) {
 					break;
 			}
 			expr->change_empty(false);
-			delete new_val;
-			new_val = nullptr;
+			expr = new_val;
 		}
 	}
 }
@@ -713,11 +837,12 @@ void log_matr(DefaultNode* var, DefaultNode*& logical_matr) {
 		if (sec_tp != "m_bool")
 			yyerror("Incorrect type of argument: there must be only a logical matrix");
 		std::vector<std::vector<int>> res, matr;
-		var->get_matr(matr);
+		logical_matr->get_matr(matr);
 		var->get_log_matr(matr, res, code);
 		if (code != OK)
 			error_type(code);
 		var->change_matrix(res);
+		transpon(var);
 		init_two(var, logical_matr);
 	}
 }
@@ -742,7 +867,7 @@ void mul(DefaultNode* fir_matr, DefaultNode*& sec_matr) {
 				for (int col_sec_matr = 0; col_sec_matr < col2; col_sec_matr++) {
 					int sum = 0;
 					for (int buf_ind = 0; buf_ind < col1; buf_ind++)
-						sum += fir[str_fir_matr][buf_ind] + sec[buf_ind][col_sec_matr];
+						sum += fir[str_fir_matr][buf_ind] * sec[buf_ind][col_sec_matr];
 					add.push_back(sum);
 				}
 				res.push_back(add);
@@ -751,6 +876,24 @@ void mul(DefaultNode* fir_matr, DefaultNode*& sec_matr) {
 			fir_matr->change_matrix(res);
 			init_two(fir_matr, sec_matr);
 		}
+	}
+	else if((fir_tp == sec_tp) && (fir_tp == "int")) {
+		int fir_elem = fir_matr->get_elem(code), sec_elem;
+		if(code != OK) {
+			error_type(code);
+			return;
+		}
+		sec_elem = sec_matr->get_elem(code);
+		if(code != OK) {
+			error_type(code);
+			return;
+		}
+		fir_matr->change_info(fir_elem * sec_elem, code);
+		if(code != OK) {
+			error_type(code);
+			return;
+		}
+		init_two(fir_matr, sec_matr);
 	}
 	else yyerror("There is an expression with unsupported type of data");
 }
@@ -899,7 +1042,7 @@ void get_col(DefaultNode* matr, DefaultNode*& index) {
 			index->get_vect(IDs);
 			auto [str_sz, col_sz] = matr->get_size_matr();
 			if (IDs.size() == col_sz) {
-				for (int i = 0; i < str_sz; i++)
+				for (int i = 0; i < col_sz; i++)
 					if (IDs[i]) {
 						matr->get_col(i, adder, code);
 						if (code != OK) {
@@ -1102,7 +1245,8 @@ void e_decl(DefaultNode* var, DefaultNode*& type) {
 	std::string new_tp;
 	type->get_type(new_tp);
 	var->set_type(new_tp);
-	init_two(var, type);
+	var->change_const(false);
+	delete type;
 }
 
 void v_e_decl(DefaultNode* var, DefaultNode*& type) {
@@ -1110,7 +1254,8 @@ void v_e_decl(DefaultNode* var, DefaultNode*& type) {
 	type->get_type(new_tp);
 	new_tp = "v_" + new_tp;
 	var->set_type(new_tp);
-	init_two(var, type);
+	var->change_const(false);
+	delete type;
 }
 
 void m_e_decl(DefaultNode* var, DefaultNode*& type) {
@@ -1118,18 +1263,19 @@ void m_e_decl(DefaultNode* var, DefaultNode*& type) {
 	type->get_type(new_tp);
 	new_tp = "m_" + new_tp;
 	var->set_type(new_tp);
-	init_two(var, type);
+	var->change_const(false);
+	delete type;
 }
 
 void call(DefaultNode* func_name, DefaultNode*& params) {
 	std::string name = func_name->get_var_name();
 	auto search_func = func_sentenses.find(name);
-	if (search_func == func_sentenses.cend()) {
+	if (search_func == func_sentenses.end()) {
 		yyerror("Function with this name doesn't exist");
 		return;
 	}
 	auto search_params = func_params.find(name);
-	if (search_params == func_params.cend()) {
+	if (search_params == func_params.end()) {
 		yyerror("Unexpected error: parameters were not declared for the function");
 		return;
 	}
@@ -1146,9 +1292,33 @@ void call(DefaultNode* func_name, DefaultNode*& params) {
 	std::map<std::string, DefaultNode*> add;
 	for (int ind_def_param = 0; ind_def_param < sz_found; ind_def_param++) {
 		DefaultNode * old_par = new DataNode(all_parameters[ind_def_param]), * new_par = found_params[ind_def_param];
-		equality(old_par, new_par);
-		if (new_par)
+		std::string old_tp, new_tp;
+		err code = OK;
+		old_par->get_type(old_tp); new_par->get_type(new_tp);
+		if(old_tp == new_tp) {
+			int elem = new_par->get_elem(code);
+			if(code != OK) {
+				error_type(code);
+				return;
+			}
+			old_par->change_info(elem, code);
+			if(code != OK) {
+				error_type(code);
+				return;
+			}
+			std::vector<int> int_adder;
+			new_par->get_vect(int_adder);
+			old_par->change_vector(int_adder);
+			std::vector<std::vector<int>> new_matr;
+			new_par->get_matr(new_matr);
+			old_par->change_matrix(new_matr);
+			delete new_par;
+		}
+		else {
+			std::string error("Incorrect type of " + std::to_string(ind_def_param + 1) + " parameter");
+			yyerror(error);
 			return;
+		}
 		add.insert({ old_par->get_var_name(), old_par });
 	}
 	if (sz_found < sz_all)
@@ -1159,7 +1329,7 @@ void call(DefaultNode* func_name, DefaultNode*& params) {
 			return;
 		}
 	for (int ind_def_param = sz_found; ind_def_param < sz_all; ind_def_param++) {
-		DefaultNode* new_par = new DataNode(found_params[ind_def_param]);
+		DefaultNode* new_par = new DataNode(all_parameters[ind_def_param]);
 		add.insert({ new_par->get_var_name(), new_par });
 	}
 	func_variables.push_back(add);
@@ -1188,6 +1358,36 @@ void do_if(DefaultNode*& condit, DefaultNode* sent) {
 		condit = bypassTree(sent);
 }
 
+void do_push(DefaultNode*& var_name, DefaultNode*& new_val) {
+	std::string vname = var_name->get_var_name(), my_type, new_type;
+	new_val->get_type(new_type);
+	DefaultNode* node = nullptr;
+	for (int last_func_ind = func_variables.size() - 1; last_func_ind >= 0; last_func_ind--) {
+		auto search = func_variables[last_func_ind].find(vname);
+		if (search != func_variables[last_func_ind].end()) {
+			node = (*search).second;
+			break;
+		}
+	}
+	node->get_type(my_type);
+	if(((my_type == "v_int") && (new_type == "int")) || ((new_type == "bool") && (my_type == "v_bool"))) {
+		err code = OK;
+		int elem = new_val->get_elem(code);
+		if(code != OK) {
+			error_type(code);
+			return;
+		}
+		std::vector<int> add;
+		node->get_vect(add);
+		add.push_back(elem);
+		node->change_vector(add);
+		node->change_empty(false);
+	}
+	else yyerror("Incorrect type of data");
+	delete new_val;
+	get_variable(var_name);
+}
+
 DefaultNode* three_nodes(DefaultNode* par) {
 	std::string tp_action;
 	int num = 0;
@@ -1197,23 +1397,30 @@ DefaultNode* three_nodes(DefaultNode* par) {
 	SWITCH(tp_action) {
 		CASE("make_m1") :
 			thir_leaf = bypassTree(par->get_node(2));
-			make_m1(fir_leaf, sec_leaf, thir_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()) || (thir_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else make_m1(fir_leaf, sec_leaf, thir_leaf);
 			break;
 		CASE("coord") :
 			thir_leaf = bypassTree(par->get_node(2));
-			coord(fir_leaf, sec_leaf, thir_leaf);
+			if ((fir_leaf->get_empty()) || (sec_leaf->get_empty()) || (thir_leaf->get_empty()))
+				yyerror("There are an undefined variable");
+			else coord(fir_leaf, sec_leaf, thir_leaf);
 			break;
 		CASE("decl") :
 			thir_leaf = bypassTree(par->get_node(2));
 			decl(sec_leaf, fir_leaf, thir_leaf);
+			fir_leaf = sec_leaf;
 			break;
 		CASE("v_decl") :
 			thir_leaf = bypassTree(par->get_node(2));
 			v_decl(sec_leaf, fir_leaf, thir_leaf);
+			fir_leaf = sec_leaf;
 			break;
 		CASE("m_decl") :
 			thir_leaf = bypassTree(par->get_node(2));
 			m_decl(sec_leaf, fir_leaf, thir_leaf);
+			fir_leaf = sec_leaf;
 			break;
 		CASE("cr_func4") :
 			thir_leaf = par->get_node(2);
@@ -1284,7 +1491,7 @@ void coord(DefaultNode* var_matr, DefaultNode*& str, DefaultNode*& col) {
 		yyerror("Second and third parameters must be a scalars");
 		return;
 	}
-	int ind_str = str->get_elem(code), ind_col = str->get_elem(code);
+	int ind_str = str->get_elem(code), ind_col = col->get_elem(code);
 	if (code != OK) {
 		error_type(code);
 		return;
@@ -1295,7 +1502,9 @@ void coord(DefaultNode* var_matr, DefaultNode*& str, DefaultNode*& col) {
 		return;
 	}
 	var_matr->change_info(res, code);
-	var_matr->set_type(fir_tp.append(fir_tp.cbegin() + 2, fir_tp.cend()));
+	std::string dop_str;
+	dop_str.append(fir_tp.cbegin() + 2, fir_tp.cend());
+	var_matr->set_type(dop_str);
 	init_three(var_matr, str, col);
 }
 
@@ -1362,7 +1571,7 @@ void m_decl(DefaultNode* var_name, DefaultNode*& type, DefaultNode*& expr) {
 void cr_func(DefaultNode* func_name, DefaultNode* related_vars, DefaultNode* e_params, DefaultNode* params, DefaultNode* sent_list) {
 	std::string name = func_name->get_var_name();
 	auto search = func_sentenses.find(name);
-	if ((search != func_sentenses.cend()) || (name == "left") || (name == "right") || (name == "move") || (name == "wall") || (name == "exit")) {
+	if ((search != func_sentenses.end()) || (name == "left") || (name == "right") || (name == "move") || (name == "wall") || (name == "exit")) {
 		yyerror("Incorrect name of function: function with this name has already been created");
 		return;
 	}
@@ -1374,7 +1583,7 @@ void cr_func(DefaultNode* func_name, DefaultNode* related_vars, DefaultNode* e_p
 	related_vars->change_empty(true);
 	for (int last_func_ind = func_variables.size() - 1; last_func_ind >= 0; last_func_ind--) {
 		auto search_var = func_variables[last_func_ind].find(var_name);
-		if (search_var != func_variables[last_func_ind].cend()) {
+		if (search_var != func_variables[last_func_ind].end()) {
 			yyerror("Incorrect name of first returnable variable: variable with this name has already been created");
 			func_sentenses.erase(name);
 			return;
@@ -1387,27 +1596,29 @@ void cr_func(DefaultNode* func_name, DefaultNode* related_vars, DefaultNode* e_p
 		var->change_const(false);
 		var->change_empty(true);
 		for (int last_func_ind = func_variables.size() - 1; last_func_ind >= 0; last_func_ind--) {
-			auto search_var = func_variables[last_func_ind].find(name);
-			if (search_var != func_variables[last_func_ind].cend()) {
+			auto search_var = func_variables[last_func_ind].find(var_name);
+			if (search_var != func_variables[last_func_ind].end()) {
 				std::string dop = "Incorrect name of " + std::to_string(count) + " returnable variable: variable with this name has already been created";
 				yyerror(dop.c_str());
 				func_sentenses.erase(name);
 				return;
 			}
 		}
-		func_variables[0].insert({ name, var });
+		func_variables[0].insert({ var_name, var });
 		count++;
 	}
 	std::vector<DefaultNode*> all_params;
 	if (e_params) {
 		std::vector<DefaultNode*> add;
-		add.push_back(e_params);
+		all_params.push_back(e_params);
 		e_params->get_expr_list(add);
 		all_params.insert(all_params.cend(), add.cbegin(), add.cend());
+		for(auto par: all_params)
+			par->change_empty(true);
 	}
 	if (params) {
 		std::vector<DefaultNode*> add;
-		add.push_back(params);
+		all_params.push_back(params);
 		params->get_expr_list(add);
 		all_params.insert(all_params.cend(), add.cbegin(), add.cend());
 	}
@@ -1440,7 +1651,7 @@ DefaultNode* four_nodes(DefaultNode* par) {
 	return fir_leaf;
 }
 
-void do_for(DefaultNode* name_scal, DefaultNode*& start_val, DefaultNode*& end_val, DefaultNode* sent_list) {
+void do_for(DefaultNode*& name_scal, DefaultNode*& start_val, DefaultNode*& end_val, DefaultNode* sent_list) {
 	std::string start_tp, end_tp;
 	err code = OK;
 	start_val->get_type(start_tp);
@@ -1474,12 +1685,14 @@ void do_for(DefaultNode* name_scal, DefaultNode*& start_val, DefaultNode*& end_v
 		auto ptr = bypassTree(sent_list);
 		int last = func_variables.size() - 1;
 		for (auto it : func_variables[last])
-			delete it.second;
+			if(it.second != name_scal)
+				delete it.second;
 		func_variables.pop_back();
 		add.clear();
 	}
-	delete start_val, end_val;
+	delete start_val, end_val, name_scal;
 	start_val = end_val = nullptr;
+	name_scal = sent_list;
 }
 
 DefaultNode* five_nodes(DefaultNode* par) {
@@ -1498,7 +1711,7 @@ DefaultNode* five_nodes(DefaultNode* par) {
 
 void read_file() {
 	std::string line;
-	std::ifstream for_robot("robot1.txt");
+	std::ifstream for_robot("robot3.txt");
 	if (for_robot.is_open())
 	{
 		std::getline(for_robot, line);
@@ -1506,7 +1719,7 @@ void read_file() {
 		buf << line;
 		int x_sz = 0, y_sz = 0, x_coord = 0, y_coord = 0;
 		char dir;
-		buf >> x_sz >> y_sz >> dir >> x_coord >> y_coord;
+		buf >> x_sz >> y_sz >> dir >> y_coord >> x_coord;
 		std::vector<std::vector<objects>> my_map;
 		std::vector<objects> add;
 		for(int y = 0; y < y_sz; y++)
@@ -1546,7 +1759,7 @@ void read_file() {
 	for_robot.close();
 }
 
-void yyerror(const char* str) {
+void yyerror(const std::string& str) {
 	std::cerr << str << std::endl;
 }
 
@@ -1675,29 +1888,26 @@ bool DataNode::get_log_matr(const std::vector<std::vector<int>>& matr, std::vect
 	if (sz_str) {
 		int sz_col = matr[0].size();
 		if (sz_col) {
-			for (int ind_str = 0; ind_str < sz_str; ind_str++) {
-				int zero_sz = 0;
+			int zero_sz = 0;
+			for (int ind_col = 0; ind_col < sz_col; ind_col++) {
 				std::vector<int> add;
-				for (int ind_col = 0; ind_col < sz_col; ind_col++)
+				for (int ind_str = 0; ind_str < sz_str; ind_str++)
 					if (matr[ind_str][ind_col])
 						add.push_back(m_val[ind_str][ind_col]);
-				if (add.empty()) {
-					err_code = EMPTY_STR_MATR;
+				if (!add.empty())
+					new_res.push_back(add);
+			}
+			sz_str = new_res.size();
+			if(!sz_str) {
+				err_code = EMPTY_STR_MATR;
+				return false;
+			}
+			zero_sz = new_res[0].size();
+			for(int i = 1; i < sz_str; i++)
+				if(zero_sz != new_res[i].size()) {
+					err_code = NON_RECT;
 					return false;
 				}
-				if (ind_str) {
-					if (zero_sz == add.size())
-						new_res.push_back(add);
-					else {
-						err_code = NON_RECT;
-						return false;
-					}
-				}
-				else {
-					zero_sz = new_res[0].size();
-					new_res.push_back(add);
-				}
-			}
 			res = new_res;
 			return true;
 		}
