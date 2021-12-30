@@ -16,7 +16,7 @@
 %code provides {
 	extern FILE * yyin;
 	extern int yylex();
-	extern void yyerror(const char* str);
+	extern void yyerror(const std::string& str);
 	void init();
 	void delAll();
 	int exec(DefaultNode* par);
@@ -38,7 +38,7 @@
 %token <iVal> FOR IF BEG BEGIN_FOR BEGIN_IF END END_IF END_FOR WORD_FUNC
 %token <iVal> SUM SR SL AND ELEM_MULT ASSIGN TRANSPON ENDL
 
-%token <iVal> MOVE WALL_FUNC EXIT_FUNC RIGHT LEFT PRINT
+%token <iVal> MOVE WALL_FUNC EXIT_FUNC RIGHT LEFT PRINT SIZE PUSH MAP_FUNC
 
 %precedence ASSIGN
 %left '>' '<' AND
@@ -48,6 +48,7 @@
 %precedence SR SL
 %precedence TRANSPON
 %precedence '!'
+%precedence PUSH
 
 %type <dNode> data expr var_declar argument_list empty_var_declar expr_matr_or_vect
 %type <dNode> empty_argument_list function_actions sent sent_list program error
@@ -55,8 +56,8 @@
 %%
 
 program:
-		sent_list						{ exec($1); delTree($1); delAll(); exit(0);}
-		| %empty						{ $$ = nullptr; init(); }
+		sent_list						{ init(); exec($1); delTree($1); delAll(); exit(0);}
+		| %empty						{ $$ = nullptr; }
 		;
 
 sent_list:
@@ -68,8 +69,8 @@ sent:
 		var_declar ENDL						{ $$ = oper("new_decl", 1, $1); }
 		| CONST var_declar ENDL				{ $$ = oper("const", 1, $2); }
 		| function_actions ENDL				{ $$ = oper("func_act", 1, $1); }
-		| FOR NAME '=' expr ':' expr ENDL beg_for ENDL sent_list ENDL end_for ENDL			{ $$ = oper("for", 4, get_var($2), $4, $6, $10); }
-		| IF expr ENDL beg_if ENDL sent_list ENDL end_if ENDL								{ $$ = oper("if", 2, $2, $6); }
+		| FOR NAME '=' expr ':' expr ENDL beg_for ENDL sent_list end_for ENDL			{ $$ = oper("for", 4, get_var($2), $4, $6, $10); }
+		| IF expr ENDL beg_if ENDL sent_list end_if ENDL								{ $$ = oper("if", 2, $2, $6); }
 		| expr ENDL							{ $$ = oper("new_expr", 1, $1); }
 		| LEFT ENDL							{ $$ = oper("left", 0); }
 		| RIGHT	ENDL						{ $$ = oper("right", 0); }
@@ -139,13 +140,14 @@ expr:
 		| NAME							{ $$ = find_var(get_var($1)); }
 		| NAME '(' expr ',' expr ')'	{ $$ = oper("coord", 3, find_var(get_var($1)), $3, $5); }
 		| MOVE '(' expr ')'				{ $$ = oper("move", 1, $3); }
+		| MAP_FUNC						{ $$ = oper("get_map", 0); }
 		| WALL_FUNC						{ $$ = oper("wall", 0); }
 		| EXIT_FUNC						{ $$ = oper("exit", 0); }
 		| expr '+' expr					{ $$ = oper("+", 2, $1, $3); }
 		| expr '-' expr					{ $$ = oper("-", 2, $1, $3); }
 		| expr SL						{ $$ = oper("sl", 1, $1); }
 		| expr SR						{ $$ = oper("sr", 1, $1); }
-		| expr'<' expr					{ $$ = oper("lt", 2, $1, $3); }
+		| expr '<' expr					{ $$ = oper("lt", 2, $1, $3); }
 		| expr '>' expr					{ $$ = oper("gt", 2, $1, $3); }
 		| expr AND expr					{ $$ = oper("and", 2, $1, $3); }
 		| '!' expr						{ $$ = oper("not", 1, $2); }
@@ -157,8 +159,10 @@ expr:
 		| NAME '(' '[' ':' ']' ',' expr ')'	{ $$ = oper("get_str", 2, find_var(get_var($1)), $7); }
 		| NAME '(' '[' ']' ',' expr ')'		{ $$ = oper("get_str", 2, find_var(get_var($1)), $6); }
 		| NAME '(' expr ')'				{ $$ = oper("log_matr", 2, find_var(get_var($1)), $3); }
+		| SIZE '(' expr ')'				{ $$ = oper("get_size", 1, $3); }
 		| SUM '(' expr ')'				{ $$ = oper("sum", 1, $3); }
-		| NAME ASSIGN expr				{ $$ = oper("eq", 2, find_var(get_var($1)), $3); }
+		| NAME ASSIGN expr				{ $$ = oper("eq", 2, get_var($1), $3); }
+		| NAME PUSH expr				{ $$ = oper("push", 2, get_var($1), $3); }
 		| TYPE '(' expr ')'				{ $$ = oper("ch_tp", 2, get_type($1), $3); }
 		| VECT '(' expr ',' expr ')'	{ $$ = oper("make_v", 2, $3, $5); }
 		| MATRIX '(' expr ',' expr ',' expr')'	{ $$ = oper("make_m1", 3, $3, $5, $7); }
@@ -172,6 +176,9 @@ data:
 
 %%
 // {	std::cout << "Error at line: " << @2.first_line << std::endl;	}
+/*
+	
+*/
 
 int exec(DefaultNode* par) {
 	bypassTree(par);
@@ -254,8 +261,10 @@ DefaultNode* find_var(DefaultNode* var) {
 	return oper("get_var", 1, var);
 }
 
+// bison -d --debug gramm.y --verbose && flex -d tokenize.l && g++ -std=c++17 -o lab3 Parser.cpp Scanner.cpp nodes.cpp Game.cpp
+
 int main() {
-	yyin = fopen("easy.txt", "r");
+	yyin = fopen("maze.txt", "r");
 	yyparse();
 	fclose(yyin);
 	return 0;

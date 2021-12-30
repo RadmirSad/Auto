@@ -1,7 +1,7 @@
 %{
 	#include "Parser.hpp"
 	
-	extern void yyerror(const char*);
+	extern void yyerror(const std::string&);
 %}
 
 %option yylineno noyywrap outfile="Scanner.cpp"
@@ -26,11 +26,11 @@ skip [()!<>+-=:\*{}\[\],]
 for {	yylloc.last_line = yylloc.first_line = yylineno; return FOR;	}
 if {	yylloc.last_line = yylloc.first_line = yylineno; return IF;		}
 begin {	yylloc.last_line = yylloc.first_line = yylineno; return BEG;	}
-begin\[if\] {	yylloc.last_line = yylloc.first_line = yylineno; return BEGIN_IF;	}
-begin\[for\] {	yylloc.last_line = yylloc.first_line = yylineno; return BEGIN_FOR;	}
+beginif {	yylloc.last_line = yylloc.first_line = yylineno; return BEGIN_IF;	}
+beginfor {	yylloc.last_line = yylloc.first_line = yylineno; return BEGIN_FOR;	}
 end {	yylloc.last_line = yylloc.first_line = yylineno; return END;	}
-end\[if\] {	yylloc.last_line = yylloc.first_line = yylineno; return END_IF;	}
-end\[for\] {	yylloc.last_line = yylloc.first_line = yylineno; return END_FOR;	}
+endif {	yylloc.last_line = yylloc.first_line = yylineno; return END_IF;	}
+endfor {	yylloc.last_line = yylloc.first_line = yylineno; return END_FOR;	}
 
 (int)|(bool) {
 				yylloc.last_line = yylloc.first_line = yylineno;
@@ -43,11 +43,14 @@ end\[for\] {	yylloc.last_line = yylloc.first_line = yylineno; return END_FOR;	}
 \[m\] {	yylloc.last_line = yylloc.first_line = yylineno; return MATRIX;	}
 "<-" {	yylloc.last_line = yylloc.first_line = yylineno; return ASSIGN;	}
 sum {	yylloc.last_line = yylloc.first_line = yylineno; return SUM;	}
+map {	yylloc.last_line = yylloc.first_line = yylineno; return MAP_FUNC; }
 move {	yylloc.last_line = yylloc.first_line = yylineno; return MOVE;	}
 left {	yylloc.last_line = yylloc.first_line = yylineno; return LEFT;	}
 right {	yylloc.last_line = yylloc.first_line = yylineno; return RIGHT;	}
 exit {	yylloc.last_line = yylloc.first_line = yylineno; return EXIT_FUNC;	}
 wall {	yylloc.last_line = yylloc.first_line = yylineno; return WALL_FUNC;	}
+size {	yylloc.last_line = yylloc.first_line = yylineno; return SIZE;	}
+push {	yylloc.last_line = yylloc.first_line = yylineno; return PUSH;	}
 print {	yylloc.last_line = yylloc.first_line = yylineno; return PRINT;	}
 function {	yylloc.last_line = yylloc.first_line = yylineno; return WORD_FUNC;	}
 
@@ -84,8 +87,3 @@ function {	yylloc.last_line = yylloc.first_line = yylineno; return WORD_FUNC;	}
   }
 
 %%
-
-std::vector<std::map<std::string, DefaultNode*>> func_variables;
-std::map<std::string, DefaultNode*> func_sentenses;
-std::map<std::string, std::vector<DefaultNode*>> func_params;
-Robot* my_robot = nullptr;
